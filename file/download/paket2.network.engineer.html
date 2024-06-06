@@ -1,1 +1,508 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UKK | Network Engineer</title>
+  <style>
+    body {
+    font-family: 'Arial', sans-serif;
+    padding: 1px;
+    background-color: black;
+    color: #fff;
+    }
+    .container {
+    max-width: 600px;
+    margin: auto;
+    }
+    h1 {
+    text-align: center;
+    color: cyan;
+    }
+    h5 {
+    text-align: center;
+    color: #1dfc00;
+    }
+    label {
+      font-size: 24px;
+    }
+    .checkbox-list {
+    list-style: none;
+    padding: 0;
+    }
+    .checkbox-list li {
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    }
+    .checkbox-list input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 50px;
+    height: 50px;
+    background-color: #fff;
+    margin-right: 5px;
+    border-radius: 9px;
+    position: relative;
+    cursor: pointer;
+    vertical-align: middle;
+    }
+    .checkbox-list input[type="checkbox"]:checked {
+    background-color: #04AA6D;
+    }
+    .checkbox-list input[type="checkbox"]:checked:after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6px;
+    height: 15px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+    }
+    .checkbox-list label {
+    display: inline-block;
+    overflow: hidden;
+    }
+    .checkbox-list label span {
+    display: inline-block;
+    transition: transform 0.3s, opacity 0.3s;
+    }
+    .checkbox-list input[type="checkbox"]:checked + label span {
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: popIn 0.3s forwards;
+    animation-delay: calc(0.1s * var(--i));
+    }
+    .popup {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    background: #002323;
+    color: cyan;
+    padding: 20px;
+    bottom: 10px;
+    width: 35%;
+    margin: auto;
+    text-align: center;
+    transition: bottom 0.5s;
+    border-radius: 10px;
+    border: 2px solid cyan;
+}
+.popup.show {
+    display: block;
+    bottom: 25px;
+}
+.ya {
+    margin: 0 5px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #012700;
+    color: #17fc00;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 10px;
+    border: 2px solid #11ff00;
+}
+.ya:hover {
+    background-color: #2aff02;
+}
 
+.tidak {
+    margin: 0 5px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #2a2a2a;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 10px;
+    border: 2px solid #ffffff;
+}
+.tidak:hover {
+    background-color: #fff202;
+}
+
+.reset {
+    margin: 0 5px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #280000;
+    color: #eb0000;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 10px;
+    border: 2px solid #ec0000;
+}
+.reset:hover {
+    background-color: #ee7200;
+}
+
+  @media (max-width: 600px) {
+    .popup {
+      bottom: 10px;
+      width: 70%;
+      margin: auto;
+    }
+  }
+
+    @keyframes popIn {
+    0% {
+    opacity: 0;
+    transform: translateY(-10px);
+    }
+    50% {
+    opacity: 1;
+    transform: translateY(5px);
+    }
+    100% {
+    opacity: 1;
+    transform: translateY(0);
+    }
+    }
+    @media (max-width: 600px) {
+    h1 {
+    font-size: 24px;
+    }
+    h5 {
+    font-size: 18px;
+    }
+    .container {
+    width: 100%;
+    padding: 10px;
+    }
+    .checkbox-list input[type="checkbox"] {
+    width: 40px;
+    height: 40px;
+    }
+    label {
+      font-size: 12px;
+    }
+    }
+    .logo-icon {
+    position: fixed;
+    right: 10px;
+    bottom: 100px;
+    width: 200px;
+    height: auto;
+    transition: width 0.3s;
+    }
+    @media (max-width: 600px) {
+    .logo-icon {
+    width: 100px;
+    }
+    }
+    .animated-text {
+    display: inline-block;
+    transition: transform 0.3s, opacity 0.3s;
+    }
+    #downloadBtn {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    }
+
+    @media (max-width: 768px) {
+    #downloadBtn {
+    font-size: 14px;
+    padding: 8px 0;
+    }
+    }
+
+    span {
+    white-space: pre-wrap;
+    word-break: break-word;
+    }
+  </style>
+</head>
+<body onload="xcsg()">
+  <button id="downloadBtn">Download Log</button><br /><br />
+  <button id="downloadBtn" download><a style="text-decoration:none; color:white;" href="https://tjkt.netlify.app/ukk/paket2.network.engineer.html" download>Download HTML (Offline View)</a></button>
+  <div class="container">
+    <h1 style="color:#fff001">Server v1.0.035 - Reyzzcoding</h1>
+    <h5 style="color:#ff7c00">SNTP / NTP : Buka Menu System &gt; Cari SNTP</h5>
+    <h5 style="color:#ff7c00">Service Port : Buka IP &gt; Service</h5>
+    
+    <hr />
+    
+    <h5>Note : Centang Dulu Kalo Mau Simpan Progres Urutan</h5>
+    <h5>Note : Simpan Perubahan Agar Tidak Hilang Pada Device Yang Kamu Pakai</h5>
+    <h1>Urutan Konfigurasi Mikrotik</h1>
+    <div id="listView"></div>
+    <div class="popup" id="popup">
+      Simpan Perubahan?<br /><br />
+  <button class="ya" onclick="saveChanges()">Iya</button>
+  <button class="tidak" onclick="hidePopup()">Tidak</button>
+  <button class="reset" onclick="resetAll()">Reset</button>
+</div>
+</div>
+<script>
+var listData = [
+{ "id": "1", "text": "Nyalakan Semua Router" },
+{ "id": "2", "text": "Siapkan Kabel UTP 11 Unit" },
+{ "id": "3", "text": "Konfigurasi Awal Dari Router R3 Malang" },
+{ "id": "4", "text": "MLG - Port 1 Kabel ISP" },
+{ "id": "5", "text": "MLG - Port 2 Kabel Untuk Jombang Pasang Di Port 1 Jombang" },
+{ "id": "6", "text": "MLG - Port 3 Kabel Untuk Surabaya Pasang Di Port 1 Surabaya" },
+{ "id": "7", "text": "MLG - Port 4 Kabel Lan" },
+{ "id": "8", "text": "MLG - Identity R3 Malang (Nama)" },
+{ "id": "9", "text": "MLG - Password Dulu Jan Lupa" },
+{ "id": "10", "text": "MLG - Ganti Service Port 2803" },
+{ "id": "11", "text": "MLG - Nyalakan DNS Allow Request" },
+{ "id": "NAT", "text": "MLG - Setup Firewall > NAT" },
+{ "id": "12", "text": "MLG - Aktifkan Romon" },
+{ "id": "13", "text": "MLG - Remote R2 Dan R3 Dari Mac Telnet" },
+{ "id": "14", "text": "MLG - Soft Reset R2 & R3 Itu" },
+{ "id": "reset", "text": "MLG - Command Reset (system reset-configurations no-default=yes) > Y" },
+{ "id": "15", "text": "MLG - Ganti Nama Mereka Sesuai Soal" },
+{ "id": "16", "text": "MLG - Aktifkan Romon Dari Mac Telnet" },
+{ "id": "17", "text": "MLG - Command Romon (tool romon set enabled=yes)" },
+{ "id": "18", "text": "MLG - Sambung DHCP Client" },
+{ "id": "19", "text": "MLG - Add IP Ether 2 (172.22.X.25/30)" },
+{ "id": "20", "text": "MLG - Add IP Ether 3 (172.23.X.65/30)" },
+{ "id": "bonus", "text": "MLG - Ganti NTP Server, Copy Dari Dynamic IP" },
+{ "id": "21", "text": "Pindah Ke Router 1 Jombang " },
+{ "id": "22", "text": "JBG - Setup DHCP Client" },
+{ "id": "23", "text": "JBG - Aktifkan DNS Allow Request" },
+{ "id": "ntpss", "text": "JBG - Ubah NTP Copy Dari Dynamic IP" },
+{ "id": "24", "text": "JBG - Ubah Service Port 2801" },
+{ "id": "kabel", "text": "JBG - Pasang Ether 3 Ke Port 3 Surabaya" },
+{ "id": "kabel1", "text": "JBG - Pasang Ether 2 Ke Port 1 Switch Jombang" },
+{ "id": "25", "text": "JBG - Tambah IP Ether 3 (172.21.X.45/30)" },
+{ "id": "26", "text": "JBG - Masuk BGP Ubah AS (80501)" },
+{ "id": "27", "text": "JBG - Tambah Network Ether 1 & 3 Dan Kasih /30" },
+{ "id": "28", "text": "JBG - Sekalian Tambah VLAN di Interface" },
+{ "id": "29", "text": "JBG - VLAN 100 (172.16.X.113/28)" },
+{ "id": "30", "text": "JBG - VLAN 200 (172.17.X.145/28)" },
+{ "id": "31", "text": "JBG - Setup DHCP Server Vlan 100 & 200" },
+{ "id": "32", "text": "JBG - Tambah NAT" },
+{ "id": "33", "text": "Lalu Pindah Ke R2 Surabaya" },
+{ "id": "34", "text": "SBY - Setup DHCP Client" },
+{ "id": "35", "text": "SBY - Tambah IP Ether 3 (172.21.X.46/30)" },
+{ "id": "36", "text": "SBY - Aktifkan DNS Allow Request" },
+{ "id": "37", "text": "SBY - Tambah Vlan 300 & 400 Tanpa IP" },
+{ "id": "38", "text": "SBY - Service Port (2802)" },
+{ "id": "39", "text": "SBY - Ganti NTP, Copy Dari Dynamic IP" },
+{ "id": "40", "text": "SBY - Ubah AS BGP Ke 80502" },
+{ "id": "41", "text": "SBY - Tambah Network Ether 1 & 3 Dan Kasih /30" },
+{ "id": "42", "text": "SBY - Peers Ke Malang (172.23.X.65) (80503)" },
+{ "id": "43", "text": "SBY - Peees Ke Jombang (172.21.X.45) (80501)" },
+{ "id": "44", "text": "Pindah Ke Malang Lagi" },
+{ "id": "45", "text": "MLG - AS BGP Ganti Ke 80503" },
+{ "id": "46", "text": "MLG - Tambah Network Ether 1, 2, 3 Dan Kasih /30" },
+{ "id": "47", "text": "MLG - Network Internet Tambah Gini 192.168.7.7" },
+{ "id": "48", "text": "MLG - Peers Ke Jombang (172.22.X.26) (80501)" },
+{ "id": "49", "text": "MLG - Peers Ke Surabaya (172.23.X.66) (80502)" },
+{ "id": "50", "text": "Masuk Ke Jombang Lagi" },
+{ "id": "51", "text": "JBG - Peers Ke Malang (172.22.X.25) (80503)" },
+{ "id": "52", "text": "JBG - Peers Ke Surabaya (172.21.X.46) (80502)" },
+{ "id": "53", "text": "JIKA SUDAH ELISTABLES SEMUA LANJUTKAN DI ROUTER JOMBANG" },
+{ "id": "54", "text": "JBG - Masuk Ke Switch Jombang" },
+{ "id": "55", "text": "SW JBG - Buat Bridge Dan Apply Langsung" },
+{ "id": "56", "text": "SW JBG - Buat Port Di Bridge Ether All" },
+{ "id": "57", "text": "SW JBG - Masuk Ke Tab Switch" },
+{ "id": "meminimalisir", "text": "Saranku Lan Komputer Taroh Di Port 4 Dulu" },
+{ "id": "58", "text": "SW JBG - Klik Tab Vlan, Tambah 2 Vlan (Ether 1 - 2 ID:100) (Ether 1 - 3 ID:200)" },
+{ "id": "59", "text": "SW JBG - Masuk Tab Ports Ubah Ether 1 - 3" },
+{ "id": "60", "text": "SW JBG - Ether 1 (secure) (add if missing)" },
+{"id":"61","text":"SW JBG - Ether 2 (secure) (always strip) (100)"},
+{"id":"62","text":"SW JBG - Ether 3 (secure) (always strip) (200)"},
+{"id":"63","text":"SW JBG - Masuk Balik Ke R1 Jombang"},
+{"id":"64","text":"JBG - Setup Hotspot Server (vlan100)(vlan200)"},
+{ "id": "dnsName", "text": "JBG - DNS Name (tjktdbone.sch.id)" },
+{ "id": "namaHostpot", "text": "Ubah Nama Hotspot Jadi Vlan biar ga bingung" },
+{"id":"65","text":"JBG - Tambah User Profil Guru(2M) Siswa(1M)"},
+{ "id": "userspropil", "text": "JBG - Tiap User Ada 2 Untuk Vlan100 Dan 200" },
+{"id":"66","text":"JBG - Tambah User Guru(vlan100)(vlan200)"},
+{"id":"67","text":"JBG - Tambah User Siswa(vlan100)(vlan200)"},
+{"id":"68","text":"JBG - Masuk Ke Switch, Pasang Kabel Di Port 2(vlan100) / 3(vlan200)"},
+{"id":"69","text":"JBG - Tunggu Sampai Membuka Google Otomatis"},
+{"id":"70","text":"JBG - Jika Belum, Ketik Manual Di Google (tjktdbone.sch.id)"},
+{"id":"71","text":"JBG - Masukan User Dan Password"},
+{"id":"72","text":"JBG - Setelah Mencoba vlan100 Dan vlan200 Pergi Ke R2 Surabaya"},
+{"id":"73","text":"SBY - Tadikan Sudah Buat Vlan, Nah Langsung Ke Switch Surabaya Aja"},
+{"id":"switchPort4444","text":"SW SBY - Pasang Port 4 Dulu Kabel Lan Nya"},
+{"id":"74","text":"SW SBY - Masuk Ke Bridge Tambah Bridge"},
+{"id":"75","text":"SW SBY - Tambah Port Bridge All"},
+{"id":"76","text":"SW SBY - Masuk Ke Menu Switch"},
+{"id":"77","text":"SW SBY - Tambah Vlan (Ether 1-2 ID:300) (Ether 1-3 ID:400)"},
+{"id":"78","text":"SW SBY - Masuk Tab Ports Ubah Ether 1-3"},
+{"id":"79","text":"SW SBY - Ether 1 (secure) (add if missing)"},
+{"id":"80","text":"SW SBY - Ether 2 (secure) (always strip) (300)"},
+{"id":"81","text":"SW SBY - Ether 3 (secure) (always strip) (400)"},
+{"id":"82","text":"SW SBY - Masuk Ke R2 Surabaya Lagi"},
+{"id":"83","text":"SBY - Masuk Ke Tab PPP Untuk PPPoE"},
+{"id":"84","text":"SBY - Aktifkan PPPoE Server Dulu Jangan Lupa"},
+{"id":"85","text":"SBY - Masuk Ke Tab PPPoE Profil Tambahkan 2 Untuk Vlan 300-400"},
+{"id":"86","text":"SBY - Masuk Ke Tab Secret Tambahkan Akun"},
+{"id":"87","text":"SBY - Secret 1 user(pc3) pw(3pc) local(1.1.1.1) remote(1.1.1.2)"},
+{"id":"88","text":"SBY - Secret 2 user(pc4) pw(4pc) local(2.2.2.1) remote(2.2.2.2)"},
+{"id":"89","text":"Masukkan Lan PC Ke Switch Surabaya Port 2/3"},
+{"id":"90","text":"Buka Control Panel"},
+{"id":"91","text":"Klik Network"},
+{"id":"92","text":"Klik Atas Sendiri Saat Berada Di Tab Network (lupa gw)"},
+{"id":"93","text":"Tambah Network Baru"},
+{"id":"94","text":"Pilih Atas Sendiri"},
+{"id":"95","text":"Pilih Broadcast (PPPoE)"},
+{"id":"96","text":"Masukkan Akun Yang Sesuai"},
+{"id":"97","text":"Dan Tunggu Sampai Koneksi Berhasil"},
+{"id":"98","text":"Kalau Ada Bug, Coba Cek Bagian NAT, PPPoE Server Udah Nyala Belum"},
+{"id":"99","text":"Jika Sudah Yaudah Sih Wir"},
+{"id":"100","text":"Makasih Udah Baca Dokumentasi Ini"}
+];
+document.addEventListener('DOMContentLoaded', function() {
+displayList();
+const checkboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
+checkboxes.forEach((checkbox) => {
+checkbox.checked = localStorage.getItem(checkbox.id) === 'true';
+checkbox.addEventListener('change', function() {
+if (this.checked) {
+showPopup();
+}
+animateLabel(this);
+});
+});
+
+hidePopupIfNoneChecked();
+});
+
+function showPopup() {
+document.getElementById('popup').classList.add('show');
+}
+
+function hidePopup() {
+document.getElementById('popup').classList.remove('show');
+}
+
+function hidePopupIfNoneChecked() {
+const checkboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
+const isAnyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
+if (!isAnyChecked) {
+hidePopup();
+}
+}
+
+function saveChanges() {
+const checkboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
+checkboxes.forEach((checkbox) => {
+localStorage.setItem(checkbox.id, checkbox.checked);
+});
+hidePopup();
+}
+
+function resetAll() {
+const checkboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
+checkboxes.forEach((checkbox) => {
+checkbox.checked = false;
+localStorage.removeItem(checkbox.id);
+});
+hidePopup();
+}
+
+
+function animateLabel(checkbox) {
+const label = checkbox.nextElementSibling;
+const text = label.textContent;
+label.innerHTML = '';
+text.split('').forEach((char, index) => {
+const span = document.createElement('span');
+span.textContent = char;
+span.classList.add('animated-text');
+span.style.animationDelay = `${index * 0.01}s`;
+label.appendChild(span);
+});
+}
+
+
+function displayList() {
+var listView = document.getElementById('listView');
+listView.innerHTML = '';
+var ul = document.createElement('ul');
+ul.className = 'checkbox-list';
+listData.forEach(function(item) {
+var li = document.createElement('li');
+
+var initialLabel = document.createElement('span');
+initialLabel.id = 'exampleLabel';
+
+var input = document.createElement('input');
+input.type = 'checkbox';
+input.id = item.id;
+
+var label = document.createElement('label');
+label.textContent = item.text;
+label.htmlFor = item.id;
+
+li.appendChild(initialLabel);
+li.appendChild(input);
+li.appendChild(label);
+ul.appendChild(li);
+});
+listView.appendChild(ul);
+}
+</script>
+<script>
+function saveActivity(activity) {
+let activities = JSON.parse(localStorage.getItem('userActivities')) || [];
+activities.push(activity);
+localStorage.setItem('userActivities', JSON.stringify(activities));
+}
+
+window.onload = function() {
+document.addEventListener('click', () => saveActivity('User clicked'));
+document.getElementById('exampleCheckbox').addEventListener('change', function() {
+let labelText = document.getElementById('exampleLabel').textContent.trim();
+if (this.checked) {
+saveActivity('Checkbox checked: ' + labelText);
+} else {
+saveActivity('Checkbox unchecked: ' + labelText);
+}
+});
+};
+
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+const activities = localStorage.getItem('userActivities');
+if (activities) {
+const blob = new Blob([activities], { type: 'text/plain' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.style.display = 'none';
+a.href = url;
+a.download = 'pekobJepang.txt';
+document.body.appendChild(a);
+a.click();
+window.URL.revokeObjectURL(url);
+} else {
+alert('Tidak ada aktivitas untuk didownload.');
+}
+});
+</script>
+<script>
+var music = document.getElementById('backgroundMusic');
+var musicControl = document.getElementById('musicControl');
+
+window.onload = function() {
+music.play();
+};
+
+musicControl.addEventListener('click', function() {
+if (music.paused) {
+music.play();
+musicControl.src = 'https://reyzzarjam.wordpress.com/wp-content/uploads/2023/12/890699232762298418.gif';
+} else {
+music.pause();
+musicControl.src = 'https://tjkt1db.wordpress.com/wp-content/uploads/2024/02/desain_tanpa_judul_20240206_183942_0000-removebg-preview3969452251379226196.png';
+}
+});
+</script>
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js" type="text/javascript" charset="utf-8"></script>
+</body>
+</html>
