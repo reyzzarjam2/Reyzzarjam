@@ -15,6 +15,24 @@
     max-width: 600px;
     margin: auto;
     }
+    
+  #downloadBtn {
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 35%;;
+    padding: 10px 0;
+    border: none;
+    margin: 10px;
+    background-color: #012700;
+    color: #17fc00;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 10px;
+    border: 2px solid #11ff00;
+  }
+
+    
     h1 {
     text-align: center;
     color: cyan;
@@ -75,12 +93,19 @@
     animation: popIn 0.3s forwards;
     animation-delay: calc(0.1s * var(--i));
     }
-    .popup {
+    
+    hr {
+      bottom: 10px;
+      width: 90%;
+      margin: auto;
+    }
+    
+  .popup {
     display: none;
     position: fixed;
     left: 0;
     right: 0;
-    background: #002323;
+    background: #002323a1;
     color: cyan;
     padding: 20px;
     bottom: 10px;
@@ -146,6 +171,21 @@
       width: 70%;
       margin: auto;
     }
+    #downloadBtn {
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 65%;;
+      padding: 20px 0;
+      border: none;
+      margin: 10px 0;
+      background-color: #002929;
+      color: cyan;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      border-radius: 10px;
+      border: 4px solid cyan;
+    }
   }
 
     @keyframes popIn {
@@ -182,38 +222,28 @@
     }
     }
     .logo-icon {
-    position: fixed;
-    right: 10px;
-    bottom: 100px;
-    width: 200px;
-    height: auto;
-    transition: width 0.3s;
+      position: fixed;
+      right: 10px;
+      bottom: 100px;
+      width: 200px;
+      height: auto;
+      transition: width 0.3s;
     }
     @media (max-width: 600px) {
     .logo-icon {
-    width: 100px;
+      width: 100px;
     }
     }
     .animated-text {
-    display: inline-block;
-    transition: transform 0.3s, opacity 0.3s;
-    }
-    #downloadBtn {
-    width: 100%;
-    padding: 10px 0;
-    font-size: 16px;
-    cursor: pointer;
-    border: none;
-    background-color: #007bff;
-    color: white;
-    text-align: center;
+      display: inline-block;
+      transition: transform 0.3s, opacity 0.3s;
     }
 
     @media (max-width: 768px) {
     #downloadBtn {
-    font-size: 14px;
-    padding: 8px 0;
-    }
+      font-size: 14px;
+      padding: 8px 0;
+      }
     }
 
     span {
@@ -223,17 +253,32 @@
   </style>
 </head>
 <body onload="xcsg()">
-  <button id="downloadBtn">Download Log</button><br /><br />
-  <button id="downloadBtn" download><a style="text-decoration:none; color:white;" href="https://tjkt.netlify.app/ukk/paket2.network.engineer.html" download>Download HTML (Offline View)</a></button>
-  <div class="container">
-    <h1 style="color:#fff001">Server v1.0.035 - Reyzzcoding</h1>
+  <button id="downloadBtn">Download Log</button><br />
+  <button id="downloadBtn" download><a style="text-decoration:none; color:white;" href="https://github.com/reyzzarjam2/Reyzzarjam/blob/af44875e47c2aa89aa4507bdd7f0ac6a448d6dba/file/download/paket2.network.engineer.html" download>Download HTML (Offline View)</a></button>
+  <button id="downloadBtn"><a style="text-decoration:none; color:white;" href="https://discord.gg/dHPxjYfusG">Join Discord</a></button><hr /><br />
+  <button id="downloadBtn" download><a style="text-decoration:none; color:white;" href="file/konfigurasi_ukk_full.zip" download>Download All Files</a></button><br />
+  <div class="container"><hr />
+    <h1 style="color:#fff001">Server v1.0.035 - Reyzzcoding</h1><hr />
     <h5 style="color:#ff7c00">SNTP / NTP : Buka Menu System &gt; Cari SNTP</h5>
     <h5 style="color:#ff7c00">Service Port : Buka IP &gt; Service</h5>
     
     <hr />
     
     <h5>Note : Centang Dulu Kalo Mau Simpan Progres Urutan</h5>
-    <h5>Note : Simpan Perubahan Agar Tidak Hilang Pada Device Yang Kamu Pakai</h5>
+    <h5>Note : Simpan Perubahan Agar Tidak Hilang Pada Device Yang Kamu Pakai</h5><hr />
+    <h1>Cara Pasang Config Script</h1>
+    <h5>Ini Adalah Cara Cepat Config Tanpa Backup</h5><hr />
+    <div id="anjay">
+      <ul>
+        <li>Download File Pada Tombol Biru Diatas, Itu Sampel Yang Tadi Gw Buat</li>
+        <li>Masuk Winbox</li>
+        <li>Upload Ke Files Di Winbox</li>
+        <li>Buka Terminal Di Winbox</li>
+        Masukkan Command <b style="color:rgb(2,254,255)">import file=config.rsc</b>
+        <li>Atau <b style="color:rgb(2,254,255)">import file-name=config.rsc</b></li>
+      </ul>
+    </div>
+    <hr />
     <h1>Urutan Konfigurasi Mikrotik</h1>
     <div id="listView"></div>
     <div class="popup" id="popup">
