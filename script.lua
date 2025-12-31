@@ -442,6 +442,7 @@ function Library:CreateWindow(ConfigName)
     Content.ClipsDescendants = true
     
     local Window = {}
+    local ForceRefreshKeybinds = nil
         function Window:CreateTab(Name, IconId)
         local Btn = Instance.new("TextButton", Sidebar)
         Btn.Size = UDim2.new(1, 0, 0, 45)
@@ -584,6 +585,7 @@ function Library:CreateWindow(ConfigName)
                 Type = "Toggle",
                 Trigger = function() SetState(not Toggled) end 
             }
+            if ForceRefreshKeybinds then ForceRefreshKeybinds() end
         end
 
         function Tab:CreateLabel(Text)
@@ -687,8 +689,9 @@ function Library:CreateWindow(ConfigName)
                     Trigger = Callback
                 }
             end
-            
+            if ForceRefreshKeybinds then ForceRefreshKeybinds() end
             return Btn
+            
         end
 
         function Tab:CreateSlider(Text, Min, Max, Default, Callback)
@@ -1237,6 +1240,7 @@ function Library:CreateWindow(ConfigName)
                 end
             end
         end
+        ForceRefreshKeybinds = RefreshKeybinds
 
         -- Input Search & Tombol Refresh di atas list
         AddInput("Search Keybind...", "Type to filter...", function(val) SearchText = val; RefreshKeybinds() end)
