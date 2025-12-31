@@ -28,79 +28,28 @@ local EspName = GetRandomName()
 if not isfolder(ConfigFolder) then
     makefolder(ConfigFolder)
 end
-local AutoExecFile = "Reyzz_AutoExec_Status.txt"
-local AutoExecStatus = isfile(AutoExecFile) and readfile(AutoExecFile) == "true"
--- [[ THEME SYSTEM ]]
-local Themes = {
-    Dark = {
-        Background = Color3.fromRGB(15, 15, 15), 
-        Sidebar = Color3.fromRGB(10, 10, 10),
-        ElementBG = Color3.fromRGB(30, 30, 30), 
-        Accent = Color3.fromRGB(255, 255, 255), 
-        Text = Color3.fromRGB(240, 240, 240),
-        TextDim = Color3.fromRGB(150, 150, 150),
-        Stroke = Color3.fromRGB(60, 60, 60)
-    },
-    Light = {
-        Background = Color3.fromRGB(240, 240, 245),
-        Sidebar = Color3.fromRGB(220, 220, 230),
-        ElementBG = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(0, 120, 255),
-        Text = Color3.fromRGB(30, 30, 30),
-        TextDim = Color3.fromRGB(100, 100, 100),
-        Stroke = Color3.fromRGB(200, 200, 200)
-    },
-    NeonCyan = {
-        Background = Color3.fromRGB(10, 15, 20),
-        Sidebar = Color3.fromRGB(5, 10, 15),
-        ElementBG = Color3.fromRGB(20, 30, 40),
-        Accent = Color3.fromRGB(0, 255, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(100, 200, 200),
-        Stroke = Color3.fromRGB(0, 100, 100)
-    },
-    NeonGreen = {
-        Background = Color3.fromRGB(10, 20, 10),
-        Sidebar = Color3.fromRGB(5, 15, 5),
-        ElementBG = Color3.fromRGB(20, 35, 20),
-        Accent = Color3.fromRGB(50, 255, 50),
-        Text = Color3.fromRGB(220, 255, 220),
-        TextDim = Color3.fromRGB(100, 180, 100),
-        Stroke = Color3.fromRGB(20, 80, 20)
-    },
-    NeonRed = {
-        Background = Color3.fromRGB(20, 10, 10),
-        Sidebar = Color3.fromRGB(15, 5, 5),
-        ElementBG = Color3.fromRGB(35, 20, 20),
-        Accent = Color3.fromRGB(255, 50, 50),
-        Text = Color3.fromRGB(255, 220, 220),
-        TextDim = Color3.fromRGB(180, 100, 100),
-        Stroke = Color3.fromRGB(80, 20, 20)
-    }
+
+-- [[ THEME SYSTEM (FIXED / SATU WARNA) ]] --
+local CurrentTheme = {
+    Background = Color3.fromRGB(15, 15, 15), 
+    Sidebar = Color3.fromRGB(10, 10, 10),
+    ElementBG = Color3.fromRGB(30, 30, 30), 
+    Accent = Color3.fromRGB(0, 120, 255), -- Ganti warna utama di sini (Biru)
+    Text = Color3.fromRGB(240, 240, 240),
+    TextDim = Color3.fromRGB(150, 150, 150),
+    Stroke = Color3.fromRGB(60, 60, 60)
 }
 
-local CurrentThemeName = 'Dark'
-
-local CurrentTheme = Themes[CurrentThemeName]
 local ThemeRegistry = {} 
 
 local function RegisterTheme(instance, property, themeKey)
+    -- Kita tetap simpan ini supaya elemen UI otomatis dapat warna saat dibuat
     table.insert(ThemeRegistry, {Obj = instance, Prop = property, Key = themeKey})
-    instance[property] = CurrentTheme[themeKey]
-end
-
-local function ApplyTheme(themeName)
-    if Themes[themeName] then
-        CurrentThemeName = themeName
-        CurrentTheme = Themes[themeName]
-        for _, data in pairs(ThemeRegistry) do
-            if data.Obj and data.Obj.Parent then
-                TweenService:Create(data.Obj, TweenInfo.new(0.3), {[data.Prop] = CurrentTheme[data.Key]}):Play()
-            end
-        end
-        return true
+    
+    -- Terapkan warna langsung
+    if CurrentTheme[themeKey] then
+        instance[property] = CurrentTheme[themeKey]
     end
-    return false
 end
 
 local UIScale = {
