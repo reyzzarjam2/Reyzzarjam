@@ -297,7 +297,7 @@ function Library:CreateWindow(ConfigName)
         end)
     end
 
-    local ToggleButton, MainFrame, Sidebar, Content 
+    local ToggleButton, MainFrame, Sidebar, Content, SettingsBtn, SetIcon -- Tambahkan ini
 
     do
         -- Tombol Bola Mata (Toggle)
@@ -414,7 +414,7 @@ function Library:CreateWindow(ConfigName)
         SetLine.BorderSizePixel = 0
 
         -- Tombol Settings
-        local SettingsBtn = Instance.new("TextButton", SettingsArea)
+        SettingsBtn = Instance.new("TextButton", SettingsArea)
         SettingsBtn.Size = UDim2.new(1, -20, 1, -14)
         SettingsBtn.Position = UDim2.new(0, 10, 0, 7)
         RegisterTheme(SettingsBtn, "BackgroundColor3", "ElementBG")
@@ -425,7 +425,7 @@ function Library:CreateWindow(ConfigName)
         SettingsBtn.TextXAlignment = Enum.TextXAlignment.Left
         Instance.new("UICorner", SettingsBtn).CornerRadius = UDim.new(0, 6)
 
-        local SetIcon = Instance.new("ImageLabel", SettingsBtn)
+        SetIcon = Instance.new("ImageLabel", SettingsBtn)
         SetIcon.Size = UDim2.new(0, 20, 0, 20)
         SetIcon.Position = UDim2.new(0, 10, 0.5, -10)
         SetIcon.BackgroundTransparency = 1
