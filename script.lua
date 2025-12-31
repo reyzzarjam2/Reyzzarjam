@@ -1009,24 +1009,23 @@ function Library:CreateWindow(ConfigName)
         end
         return Tab
     end 
-    -- [[ 10. CONFIG & KEYBIND MANAGER (VERSI BARU - FIXED) ]] --
+    -- [[ 10. CONFIG & KEYBIND MANAGER (REMASTERED) ]] --
     function Window:AddSettingsTab()
-        -- Kita buat Halaman Manual (Bukan lewat CreateTab)
+        -- 1. Setup Halaman Settings (Sama seperti sebelumnya)
         local Page = Instance.new("ScrollingFrame", Content)
         Page.Name = "SettingsPage_Fixed"
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.BackgroundTransparency = 1
         Page.Visible = false
-        Page.ScrollBarThickness = 4
+        Page.ScrollBarThickness = 2
         Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
         Page.CanvasSize = UDim2.new(0, 0, 0, 0)
 
         local PL = Instance.new("UIListLayout", Page); PL.Padding = UDim.new(0, 10); PL.HorizontalAlignment = Enum.HorizontalAlignment.Center
         local PP = Instance.new("UIPadding", Page); PP.PaddingTop = UDim.new(0, 20); PP.PaddingBottom = UDim.new(0, 20)
 
-        -- Logika Klik Tombol Settings (Aktifkan Halaman Ini)
+        -- Logika Tombol Settings di Sidebar
         SettingsBtn.MouseButton1Click:Connect(function()
-            -- Matikan Tab Biasa
             for _, v in pairs(Sidebar:GetChildren()) do
                 if v:IsA("TextButton") then
                     local ab = v:FindFirstChild("Frame"); if ab then ab.Visible = false end
@@ -1035,117 +1034,183 @@ function Library:CreateWindow(ConfigName)
                     v.BackgroundTransparency = 1
                 end
             end
-            -- Sembunyikan Halaman Biasa
             for _, v in pairs(Content:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
 
-            -- Nyalakan Halaman Settings
             Page.Visible = true
             RegisterTheme(SettingsBtn, "TextColor3", "Accent")
-            SettingsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45) -- Sedikit lebih terang
+            SettingsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
             RegisterTheme(SetIcon, "ImageColor3", "Accent")
         end)
 
-        -- KITA GUNAKAN TRIK:
-        -- Kita buat objek "Fake Tab" agar bisa pakai fungsi CreateSection, CreateButton, dll yang sudah ada.
-        local SettingsTab = {}
-
-        -- Copy semua fungsi UI Helper ke dalam sini agar nempel ke 'Page' settings
-        -- (Untungnya di Lua kita bisa redirect fungsi)
-
-        -- Ambil fungsi dari sembarang tab (kita buat dummy dulu kalau perlu, atau copy manual logicnya)
-        -- Tapi cara paling bersih: Kita copy logic CreateSection dll ke sini, tapi arahkan ke 'Page' ini.
-
-        -- BIKIN ULANG FUNGSI UI KHUSUS SETTINGS (Simple Version)
-        function SettingsTab:CreateSection(Title)
-            -- Gunakan fungsi Section yang sudah ada di Window logic (karena itu lokal di dalam CreateWindow)
-            -- Karena fungsi CreateSection ada di dalam CreateTab, kita tidak bisa akses langsung.
-            -- JADI KITA COPY PASTE LOGIC SECTION DI SINI (tapi arahkan ke Page ini)
-
-            local Wrapper = Instance.new("Frame", Page) -- PARENT KE PAGE SETTINGS
-            Wrapper.Size = UDim2.new(0.98, 0, 0, 42); Wrapper.BackgroundTransparency = 0.5; Wrapper.BackgroundColor3 = CurrentTheme.ElementBG
-            Instance.new("UICorner", Wrapper).CornerRadius = UDim.new(0, 8)
-            local TitleLbl = Instance.new("TextLabel", Wrapper); TitleLbl.Text = Title; TitleLbl.Size = UDim2.new(1,0,1,0); TitleLbl.BackgroundTransparency=1; RegisterTheme(TitleLbl, "TextColor3", "Accent"); TitleLbl.Font=Enum.Font.GothamBlack; TitleLbl.TextSize=14
-            -- (Versi simple untuk settings)
-            local Container = Instance.new("Frame", Wrapper); Container.Name="Content"; Container.Size=UDim2.new(1,0,0,0); Container.Position=UDim2.new(0,0,0,42); Container.Visible=false 
-            -- Note: Karena logic section kamu kompleks (dropdown), untuk settings kita pakai container langsung di Page aja biar ga ribet.
-
-            -- Biar gampang, return Page aja untuk settings
-            return Page 
-        end
-
-        -- FUNGSI UI HELPER MANUAL UNTUK SETTINGS PAGE
-        local function AddButton(Text, Callback)
-            local Btn = Instance.new("TextButton", Page); Btn.Size = UDim2.new(0.95, 0, 0, 35); RegisterTheme(Btn, "BackgroundColor3", "ElementBG"); Btn.Text = Text; RegisterTheme(Btn, "TextColor3", "Text"); Btn.Font = Enum.Font.GothamBold; Btn.TextSize = 13; Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-            Btn.MouseButton1Click:Connect(Callback)
-        end
-
-        local function AddInput(Text, Callback)
-            local Frame = Instance.new("Frame", Page); Frame.Size=UDim2.new(0.95,0,0,50); Frame.BackgroundTransparency=1
-            local Lbl = Instance.new("TextLabel", Frame); Lbl.Text=Text; Lbl.Size=UDim2.new(1,0,0,20); Lbl.BackgroundTransparency=1; RegisterTheme(Lbl,"TextColor3","Text"); Lbl.Font=Enum.Font.GothamBold; Lbl.TextSize=12; Lbl.TextXAlignment=Enum.TextXAlignment.Left
-            local Box = Instance.new("TextBox", Frame); Box.Size=UDim2.new(1,0,0,30); Box.Position=UDim2.new(0,0,0,20); RegisterTheme(Box,"BackgroundColor3","ElementBG"); Box.Text=""; Box.PlaceholderText="Type here..."; RegisterTheme(Box,"TextColor3","Accent"); Box.Font=Enum.Font.GothamMedium; Box.TextSize=13; Instance.new("UICorner", Box).CornerRadius=UDim.new(0,6)
-            Box.FocusLost:Connect(function() Callback(Box.Text) end)
-        end
-
+        -- [[ FUNGSI UI HELPER ]] --
         local function AddLabel(Text)
             local Lbl = Instance.new("TextLabel", Page); Lbl.Size=UDim2.new(0.95,0,0,25); Lbl.Text=Text; Lbl.BackgroundTransparency=1; RegisterTheme(Lbl,"TextColor3","Accent"); Lbl.Font=Enum.Font.GothamBlack; Lbl.TextSize=14
         end
+        local function AddButton(Text, Callback)
+            local Btn = Instance.new("TextButton", Page); Btn.Size = UDim2.new(0.95, 0, 0, 35); RegisterTheme(Btn, "BackgroundColor3", "ElementBG"); Btn.Text = Text; RegisterTheme(Btn, "TextColor3", "Text"); Btn.Font = Enum.Font.GothamBold; Btn.TextSize=13; Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+            Btn.MouseButton1Click:Connect(Callback)
+        end
+        local function AddInput(Text, Placeholder, Callback)
+            local Frame = Instance.new("Frame", Page); Frame.Size=UDim2.new(0.95,0,0,50); Frame.BackgroundTransparency=1
+            local Lbl = Instance.new("TextLabel", Frame); Lbl.Text=Text; Lbl.Size=UDim2.new(1,0,0,20); Lbl.BackgroundTransparency=1; RegisterTheme(Lbl,"TextColor3","Text"); Lbl.Font=Enum.Font.GothamBold; Lbl.TextSize=12; Lbl.TextXAlignment=Enum.TextXAlignment.Left
+            local Box = Instance.new("TextBox", Frame); Box.Size=UDim2.new(1,0,0,30); Box.Position=UDim2.new(0,0,0,20); RegisterTheme(Box,"BackgroundColor3","ElementBG"); Box.Text=""; Box.PlaceholderText=Placeholder; RegisterTheme(Box,"TextColor3","Accent"); Box.Font=Enum.Font.GothamMedium; Box.TextSize=13; Instance.new("UICorner", Box).CornerRadius=UDim.new(0,6)
+            Box.FocusLost:Connect(function() Callback(Box.Text) end)
+        end
 
-        -- ISI KONTEN SETTINGS (Config & Keybinds)
+        -- [[ BAGIAN 1: CONFIG MANAGER ]] --
         AddLabel("CONFIG MANAGER")
-
+        
         local SelectedConfig = ""
         local function GetConfigs()
             local list = {}; if isfolder(ConfigFolder) then for _, f in pairs(listfiles(ConfigFolder)) do table.insert(list, f:gsub(ConfigFolder.."\\", ""):gsub(ConfigFolder.."/", ""):gsub(".json", "")) end end; return list
         end
-
-        -- Dropdown Config (Manual Simple)
+        
         local DropFrame = Instance.new("Frame", Page); DropFrame.Size=UDim2.new(0.95,0,0,35); RegisterTheme(DropFrame,"BackgroundColor3","ElementBG"); Instance.new("UICorner", DropFrame).CornerRadius=UDim.new(0,6)
-        local DropBtn = Instance.new("TextButton", DropFrame); DropBtn.Size=UDim2.new(1,0,1,0); DropBtn.BackgroundTransparency=1; DropBtn.Text="Select Config (Click to Load List)"; RegisterTheme(DropBtn,"TextColor3","Text"); DropBtn.Font=Enum.Font.GothamBold; DropBtn.TextSize=13
+        local DropBtn = Instance.new("TextButton", DropFrame); DropBtn.Size=UDim2.new(1,0,1,0); DropBtn.BackgroundTransparency=1; DropBtn.Text="Select Config (Check Console)"; RegisterTheme(DropBtn,"TextColor3","Text"); DropBtn.Font=Enum.Font.GothamBold; DropBtn.TextSize=13
+        DropBtn.MouseButton1Click:Connect(function() print("AVAILABLE CONFIGS:"); for _,v in pairs(GetConfigs()) do print("- "..v) end; DropBtn.Text = "Check Console (F9) for List" end)
 
-        DropBtn.MouseButton1Click:Connect(function()
-            -- Logic simple dropdown: print list ke console atau ganti text cycling (agar tidak ribet coding UI dropdown lagi)
-            -- Atau kita pakai InputBox untuk nama config biar lebih mudah
-            DropBtn.Text = "Check Console (F9) for Config List"
-            print("AVAILABLE CONFIGS:")
-            for _,v in pairs(GetConfigs()) do print("- "..v) end
-        end)
-
-        AddInput("Config Name", function(val) SelectedConfig = val end)
-
+        AddInput("Config Name", "Type here...", function(val) SelectedConfig = val end)
         AddButton("💾 Save Config", function()
-            if SelectedConfig == "" then ShowToast("⚠️ No Config Name!") return end
+            if SelectedConfig == "" then return end
             local Data = { Settings = {}, Keybinds = {} }
-            -- Save Logic (Sama seperti sebelumnya)
             if State.Keybinds then for name, bind in pairs(State.Keybinds) do Data.Keybinds[name] = { Key = bind.Key.Name, Shift = bind.Shift } end end
             writefile(ConfigFolder.."/"..SelectedConfig..".json", HttpService:JSONEncode(Data))
-            ShowToast("✅ Saved: "..SelectedConfig)
         end)
-
         AddButton("📂 Load Config", function()
-            if SelectedConfig == "" or not isfile(ConfigFolder.."/"..SelectedConfig..".json") then ShowToast("❌ File Not Found") return end
+            if SelectedConfig == "" or not isfile(ConfigFolder.."/"..SelectedConfig..".json") then return end
             local Data = HttpService:JSONDecode(readfile(ConfigFolder.."/"..SelectedConfig..".json"))
             if Data.Keybinds then
-                for name, kData in pairs(Data.Keybinds) do
-                    if State.Keybinds[name] then
-                        State.Keybinds[name].Key = Enum.KeyCode[kData.Key] or Enum.KeyCode.Unknown
-                        State.Keybinds[name].Shift = kData.Shift
+               for name, kData in pairs(Data.Keybinds) do
+                   if State.Keybinds[name] then
+                       State.Keybinds[name].Key = Enum.KeyCode[kData.Key] or Enum.KeyCode.Unknown
+                       State.Keybinds[name].Shift = kData.Shift
+                   end
+               end
+            end
+        end)
+
+        -- [[ BAGIAN 2: KEYBIND MANAGER (REMASTERED) ]] --
+        AddLabel("KEYBIND MANAGER")
+        
+        -- Wadah List Keybind
+        local BindListFrame = Instance.new("Frame", Page)
+        BindListFrame.Size = UDim2.new(0.95, 0, 0, 250) -- Tinggi fix
+        RegisterTheme(BindListFrame, "BackgroundColor3", "ElementBG")
+        Instance.new("UICorner", BindListFrame).CornerRadius = UDim.new(0, 8)
+        
+        local BindScroll = Instance.new("ScrollingFrame", BindListFrame)
+        BindScroll.Size = UDim2.new(1, -10, 1, -10)
+        BindScroll.Position = UDim2.new(0, 5, 0, 5)
+        BindScroll.BackgroundTransparency = 1
+        BindScroll.ScrollBarThickness = 2
+        BindScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        BindScroll.CanvasSize = UDim2.new(0,0,0,0)
+        
+        local BindLayout = Instance.new("UIListLayout", BindScroll); BindLayout.Padding = UDim.new(0, 4)
+        
+        local SearchText = ""
+
+        -- Fungsi Refresh List
+        local function RefreshKeybinds()
+            -- Bersihkan list lama
+            for _, v in pairs(BindScroll:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
+            
+            -- Ambil semua fitur yang terdaftar
+            local sortedNames = {}
+            for n in pairs(State.RegisteredFeatures) do table.insert(sortedNames, n) end
+            table.sort(sortedNames)
+
+            for _, name in ipairs(sortedNames) do
+                if SearchText == "" or string.find(string.lower(name), string.lower(SearchText)) then
+                    -- Pastikan data keybind ada di State
+                    if not State.Keybinds[name] then State.Keybinds[name] = {Key = Enum.KeyCode.Unknown, Shift = false} end
+                    local bindData = State.Keybinds[name]
+                    
+                    -- Buat Baris (Row)
+                    local Row = Instance.new("Frame", BindScroll)
+                    Row.Size = UDim2.new(1, 0, 0, 30)
+                    Row.BackgroundTransparency = 1
+                    
+                    -- Nama Fitur
+                    local Title = Instance.new("TextLabel", Row)
+                    Title.Text = name
+                    Title.Size = UDim2.new(0.5, 0, 1, 0)
+                    Title.BackgroundTransparency = 1
+                    Title.TextXAlignment = Enum.TextXAlignment.Left
+                    RegisterTheme(Title, "TextColor3", "Text")
+                    Title.Font = Enum.Font.GothamMedium
+                    Title.TextSize = 12
+                    
+                    -- Tombol Key (Contoh: "E" atau "None")
+                    local KeyBtn = Instance.new("TextButton", Row)
+                    KeyBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
+                    KeyBtn.Position = UDim2.new(0.52, 0, 0.1, 0)
+                    RegisterTheme(KeyBtn, "BackgroundColor3", "Background")
+                    Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 4)
+                    RegisterTheme(KeyBtn, "TextColor3", "Accent")
+                    KeyBtn.Font = Enum.Font.Code
+                    KeyBtn.TextSize = 12
+                    
+                    local function UpdateText()
+                        if bindData.Key == Enum.KeyCode.Unknown then KeyBtn.Text = "NONE"; KeyBtn.TextColor3 = CurrentTheme.TextDim
+                        else KeyBtn.Text = bindData.Key.Name; KeyBtn.TextColor3 = CurrentTheme.Accent end
                     end
+                    UpdateText()
+
+                    -- Tombol Shift (Toggle Hijau/Abu)
+                    local ShiftBtn = Instance.new("TextButton", Row)
+                    ShiftBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
+                    ShiftBtn.Position = UDim2.new(0.8, 0, 0.1, 0)
+                    Instance.new("UICorner", ShiftBtn).CornerRadius = UDim.new(0, 4)
+                    ShiftBtn.Font = Enum.Font.GothamBold
+                    ShiftBtn.TextSize = 10
+                    
+                    local function UpdateShift()
+                        if bindData.Shift then
+                            ShiftBtn.Text = "SHIFT"
+                            ShiftBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Hijau
+                            ShiftBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                        else
+                            ShiftBtn.Text = "NO SHIFT"
+                            RegisterTheme(ShiftBtn, "BackgroundColor3", "Background")
+                            RegisterTheme(ShiftBtn, "TextColor3", "TextDim")
+                        end
+                    end
+                    UpdateShift()
+
+                    -- Logika Ganti Key
+                    KeyBtn.MouseButton1Click:Connect(function()
+                        KeyBtn.Text = "..."
+                        KeyBtn.TextColor3 = Color3.fromRGB(255, 200, 50)
+                        local con; con = UserInputService.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.Keyboard then
+                                if input.KeyCode.Name ~= "LeftShift" and input.KeyCode.Name ~= "RightShift" then
+                                    bindData.Key = input.KeyCode
+                                    if input.KeyCode == Enum.KeyCode.Backspace then bindData.Key = Enum.KeyCode.Unknown end
+                                    UpdateText()
+                                    con:Disconnect()
+                                end
+                            elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                UpdateText(); con:Disconnect() -- Cancel klik kiri
+                            end
+                        end)
+                    end)
+
+                    -- Logika Ganti Shift
+                    ShiftBtn.MouseButton1Click:Connect(function()
+                        bindData.Shift = not bindData.Shift
+                        UpdateShift()
+                    end)
                 end
-                ShowToast("✅ Keybinds Loaded")
             end
-        end)
+        end
 
-        AddLabel("KEYBIND LIST (Read Only)")
-        -- Keybind Display Simple
-        local KeyList = Instance.new("TextLabel", Page); KeyList.Size=UDim2.new(0.95,0,0,200); KeyList.BackgroundTransparency=1; KeyList.TextYAlignment=Enum.TextYAlignment.Top; KeyList.Text="Feature : Key\n------------"; RegisterTheme(KeyList,"TextColor3","TextDim"); KeyList.Font=Enum.Font.Code; KeyList.TextSize=12
-
-        AddButton("🔄 Refresh Keybind Display", function()
-            local str = "Feature : Key\n------------\n"
-            for name, data in pairs(State.Keybinds) do
-                str = str .. name .. " : " .. data.Key.Name .. "\n"
-            end
-            KeyList.Text = str
-        end)
+        -- Input Search & Refresh Button
+        AddInput("Search Keybind...", "Filter features...", function(val) SearchText = val; RefreshKeybinds() end)
+        AddButton("🔄 Refresh List", RefreshKeybinds)
+        
+        -- Refresh sekali pas awal dibuat
+        RefreshKeybinds()
     end
     -- [[ 11. INITIALIZATION ]] --
     -- Panggil Settings Tab agar ter-load
