@@ -117,7 +117,8 @@ local Toggles = {}
 local State = {
     CurrentVersion = "1.1", 
     RegisteredFeatures = {},
-    UIListeners = {} 
+    UIListeners = {},
+    Keybinds = {}
 }
 
 local GC = getconnections or get_signal_cons
