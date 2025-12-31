@@ -1042,7 +1042,7 @@ function Library:CreateWindow(ConfigName)
             RegisterTheme(SetIcon, "ImageColor3", "Accent")
         end)
 
-        -- [[ FUNGSI UI HELPER ]] --
+        -- [[ FUNGSI UI HELPER LOKAL ]] --
         local function AddLabel(Text)
             local Lbl = Instance.new("TextLabel", Page); Lbl.Size=UDim2.new(0.95,0,0,25); Lbl.Text=Text; Lbl.BackgroundTransparency=1; RegisterTheme(Lbl,"TextColor3","Accent"); Lbl.Font=Enum.Font.GothamBlack; Lbl.TextSize=14
         end
@@ -1071,13 +1071,25 @@ function Library:CreateWindow(ConfigName)
 
         AddInput("Config Name", "Type here...", function(val) SelectedConfig = val end)
         AddButton("💾 Save Config", function()
-            if SelectedConfig == "" then return end
+            if SelectedConfig == "" then ShowToast("⚠️ Name Required!") return end
             local Data = { Settings = {}, Keybinds = {} }
-            if State.Keybinds then for name, bind in pairs(State.Keybinds) do Data.Keybinds[name] = { Key = bind.Key.Name, Shift = bind.Shift } end end
+            
+            -- Save Settings Logic
+            for key, value in pairs(State) do
+                -- (Copy logika save kamu yang lama disini jika perlu spesifik)
+                -- Simpan Keybinds
+                if State.Keybinds then 
+                    for name, bind in pairs(State.Keybinds) do 
+                        Data.Keybinds[name] = { Key = bind.Key.Name, Shift = bind.Shift } 
+                    end 
+                end
+            end
             writefile(ConfigFolder.."/"..SelectedConfig..".json", HttpService:JSONEncode(Data))
+            ShowToast("✅ Config Saved!")
         end)
+        
         AddButton("📂 Load Config", function()
-            if SelectedConfig == "" or not isfile(ConfigFolder.."/"..SelectedConfig..".json") then return end
+            if SelectedConfig == "" or not isfile(ConfigFolder.."/"..SelectedConfig..".json") then ShowToast("❌ Not Found!") return end
             local Data = HttpService:JSONDecode(readfile(ConfigFolder.."/"..SelectedConfig..".json"))
             if Data.Keybinds then
                for name, kData in pairs(Data.Keybinds) do
@@ -1086,18 +1098,22 @@ function Library:CreateWindow(ConfigName)
                        State.Keybinds[name].Shift = kData.Shift
                    end
                end
+               RefreshKeybinds() -- Refresh list agar UI update
+               ShowToast("✅ Loaded!")
             end
         end)
 
-        -- [[ BAGIAN 2: KEYBIND MANAGER (REMASTERED) ]] --
+        -- [[ BAGIAN 2: KEYBIND MANAGER (INTERAKTIF/CUSTOMIZABLE) ]] --
         AddLabel("KEYBIND MANAGER")
         
-        -- Wadah List Keybind
+        -- Wadah Utama List (Background agak gelap)
         local BindListFrame = Instance.new("Frame", Page)
-        BindListFrame.Size = UDim2.new(0.95, 0, 0, 250) -- Tinggi fix
+        BindListFrame.Size = UDim2.new(0.95, 0, 0, 300) -- Tinggi tetap
         RegisterTheme(BindListFrame, "BackgroundColor3", "ElementBG")
+        BindListFrame.BackgroundTransparency = 0.5
         Instance.new("UICorner", BindListFrame).CornerRadius = UDim.new(0, 8)
         
+        -- Scrolling Frame di dalamnya
         local BindScroll = Instance.new("ScrollingFrame", BindListFrame)
         BindScroll.Size = UDim2.new(1, -10, 1, -10)
         BindScroll.Position = UDim2.new(0, 5, 0, 5)
@@ -1110,17 +1126,19 @@ function Library:CreateWindow(ConfigName)
         
         local SearchText = ""
 
-        -- Fungsi Refresh List
-        local function RefreshKeybinds()
+        -- Fungsi Refresh (Membuat ulang list keybind)
+        -- Dibuat global lokal agar bisa dipanggil dari tombol Refresh/Search
+        RefreshKeybinds = function()
             -- Bersihkan list lama
             for _, v in pairs(BindScroll:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
             
-            -- Ambil semua fitur yang terdaftar
+            -- Ambil semua fitur yang terdaftar (RegisteredFeatures)
             local sortedNames = {}
             for n in pairs(State.RegisteredFeatures) do table.insert(sortedNames, n) end
             table.sort(sortedNames)
 
             for _, name in ipairs(sortedNames) do
+                -- Filter pencarian
                 if SearchText == "" or string.find(string.lower(name), string.lower(SearchText)) then
                     -- Pastikan data keybind ada di State
                     if not State.Keybinds[name] then State.Keybinds[name] = {Key = Enum.KeyCode.Unknown, Shift = false} end
@@ -1128,39 +1146,47 @@ function Library:CreateWindow(ConfigName)
                     
                     -- Buat Baris (Row)
                     local Row = Instance.new("Frame", BindScroll)
-                    Row.Size = UDim2.new(1, 0, 0, 30)
+                    Row.Size = UDim2.new(1, 0, 0, 35)
                     Row.BackgroundTransparency = 1
+                    
+                    -- Garis bawah tipis
+                    local Line = Instance.new("Frame", Row); Line.Size=UDim2.new(1,0,0,1); Line.Position=UDim2.new(0,0,1,0); Line.BackgroundColor3=CurrentTheme.Stroke; Line.BorderSizePixel=0
                     
                     -- Nama Fitur
                     local Title = Instance.new("TextLabel", Row)
                     Title.Text = name
-                    Title.Size = UDim2.new(0.5, 0, 1, 0)
+                    Title.Size = UDim2.new(0.45, 0, 1, 0)
                     Title.BackgroundTransparency = 1
                     Title.TextXAlignment = Enum.TextXAlignment.Left
                     RegisterTheme(Title, "TextColor3", "Text")
                     Title.Font = Enum.Font.GothamMedium
                     Title.TextSize = 12
+                    Title.TextTruncate = Enum.TextTruncate.AtEnd
                     
-                    -- Tombol Key (Contoh: "E" atau "None")
+                    -- Tombol Ganti Key (KeyBtn)
                     local KeyBtn = Instance.new("TextButton", Row)
                     KeyBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
-                    KeyBtn.Position = UDim2.new(0.52, 0, 0.1, 0)
+                    KeyBtn.Position = UDim2.new(0.48, 0, 0.1, 0)
                     RegisterTheme(KeyBtn, "BackgroundColor3", "Background")
                     Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 4)
-                    RegisterTheme(KeyBtn, "TextColor3", "Accent")
                     KeyBtn.Font = Enum.Font.Code
                     KeyBtn.TextSize = 12
                     
                     local function UpdateText()
-                        if bindData.Key == Enum.KeyCode.Unknown then KeyBtn.Text = "NONE"; KeyBtn.TextColor3 = CurrentTheme.TextDim
-                        else KeyBtn.Text = bindData.Key.Name; KeyBtn.TextColor3 = CurrentTheme.Accent end
+                        if bindData.Key == Enum.KeyCode.Unknown then 
+                            KeyBtn.Text = "NONE"
+                            RegisterTheme(KeyBtn, "TextColor3", "TextDim")
+                        else 
+                            KeyBtn.Text = bindData.Key.Name
+                            RegisterTheme(KeyBtn, "TextColor3", "Accent") 
+                        end
                     end
                     UpdateText()
 
-                    -- Tombol Shift (Toggle Hijau/Abu)
+                    -- Tombol Toggle Shift (ShiftBtn)
                     local ShiftBtn = Instance.new("TextButton", Row)
-                    ShiftBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
-                    ShiftBtn.Position = UDim2.new(0.8, 0, 0.1, 0)
+                    ShiftBtn.Size = UDim2.new(0.22, 0, 0.8, 0)
+                    ShiftBtn.Position = UDim2.new(0.76, 0, 0.1, 0)
                     Instance.new("UICorner", ShiftBtn).CornerRadius = UDim.new(0, 4)
                     ShiftBtn.Font = Enum.Font.GothamBold
                     ShiftBtn.TextSize = 10
@@ -1168,35 +1194,42 @@ function Library:CreateWindow(ConfigName)
                     local function UpdateShift()
                         if bindData.Shift then
                             ShiftBtn.Text = "SHIFT"
-                            ShiftBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Hijau
+                            ShiftBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Hijau = ON
                             ShiftBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
                         else
                             ShiftBtn.Text = "NO SHIFT"
-                            RegisterTheme(ShiftBtn, "BackgroundColor3", "Background")
+                            RegisterTheme(ShiftBtn, "BackgroundColor3", "Background") -- Abu = OFF
                             RegisterTheme(ShiftBtn, "TextColor3", "TextDim")
                         end
                     end
                     UpdateShift()
 
-                    -- Logika Ganti Key
+                    -- [LOGIKA 1] Ganti Keybind
                     KeyBtn.MouseButton1Click:Connect(function()
                         KeyBtn.Text = "..."
-                        KeyBtn.TextColor3 = Color3.fromRGB(255, 200, 50)
-                        local con; con = UserInputService.InputBegan:Connect(function(input)
+                        KeyBtn.TextColor3 = Color3.fromRGB(255, 200, 50) -- Kuning saat menunggu
+                        
+                        local con
+                        con = UserInputService.InputBegan:Connect(function(input)
                             if input.UserInputType == Enum.UserInputType.Keyboard then
+                                -- Abaikan tombol Shift (karena itu modifier)
                                 if input.KeyCode.Name ~= "LeftShift" and input.KeyCode.Name ~= "RightShift" then
                                     bindData.Key = input.KeyCode
                                     if input.KeyCode == Enum.KeyCode.Backspace then bindData.Key = Enum.KeyCode.Unknown end
+                                    if input.KeyCode == Enum.KeyCode.Escape then bindData.Key = Enum.KeyCode.Unknown end
+                                    
                                     UpdateText()
                                     con:Disconnect()
                                 end
                             elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                UpdateText(); con:Disconnect() -- Cancel klik kiri
+                                -- Klik kiri mouse untuk cancel
+                                UpdateText()
+                                con:Disconnect() 
                             end
                         end)
                     end)
 
-                    -- Logika Ganti Shift
+                    -- [LOGIKA 2] Toggle Shift Mode
                     ShiftBtn.MouseButton1Click:Connect(function()
                         bindData.Shift = not bindData.Shift
                         UpdateShift()
@@ -1205,11 +1238,11 @@ function Library:CreateWindow(ConfigName)
             end
         end
 
-        -- Input Search & Refresh Button
-        AddInput("Search Keybind...", "Filter features...", function(val) SearchText = val; RefreshKeybinds() end)
-        AddButton("🔄 Refresh List", RefreshKeybinds)
+        -- Input Search & Tombol Refresh di atas list
+        AddInput("Search Keybind...", "Type to filter...", function(val) SearchText = val; RefreshKeybinds() end)
+        AddButton("🔄 Refresh Keybind List", RefreshKeybinds)
         
-        -- Refresh sekali pas awal dibuat
+        -- Load list pertama kali
         RefreshKeybinds()
     end
     -- [[ 11. INITIALIZATION ]] --
