@@ -3205,15 +3205,6 @@ function BuildConfigManager(TargetTab, RefreshKeybindsFunc)
     local SelectedConfigName = ""
     local SelectedFileToLoad = ""
     local HttpService = game:GetService("HttpService")
-    CreateToggle(Box_Config, "⚡ Auto Execute (Persistence)", function(val)
-        SafeWriteFile(AutoExecFile, tostring(val))
-        if val then
-            local queue = (syn and syn.queue_on_teleport) or queue_on_teleport or request and request.queue_on_teleport
-            if queue then
-                queue([[ repeat task.wait() until game:IsLoaded(); loadstring(game:HttpGet("LINK_GITHUB_RAW_KAMU"))() ]])
-            else ShowToast("Executor not supported!") end
-        end
-    end, (isfile(AutoExecFile) and readfile(AutoExecFile) == "true"))
     CreateInput(Box_Config, "New Config Name", "Type name...", function(val) SelectedConfigName = val end, true)
     local ConfigDrop = CreateDropdown(Box_Config, "Select Config", GetConfigFiles(), "Select...", function(val) SelectedFileToLoad = val end)
     CreateButton(Box_Config, "🔄 Refresh List", function() if ConfigDrop.Refresh then ConfigDrop:Refresh(GetConfigFiles()) end end)
@@ -4896,20 +4887,6 @@ do
         end
     end)
     CreateToggle(Box_Sys, "Auto Reconnect", function(v) State.AutoReconnect = v end)
-    CreateToggle(Box_Sys, "⚡ Auto Execute (Persistence)", function(val)
-        SafeWriteFile(AutoExecFile, tostring(val))
-        if val then
-            local queue = (syn and syn.queue_on_teleport) or queue_on_teleport or request.queue_on_teleport
-            if queue then
-                queue([[ 
-                    repeat task.wait() until game:IsLoaded()
-                    loadstring(game:HttpGet("LINK_GITHUB_RAW_KAMU_DISINI"))() 
-                ]])
-            else
-                ShowToast("Executor tidak support Queue!")
-            end
-        end
-    end, AutoExecStatus) 
     CreateToggle(Box_Sys, "Anti-AFK", function(v) State.AntiAFK = v end)
     CreateToggle(Box_Sys, "Unlock Mouse (F1)", function(v) 
         State.ForceUnlockMouse = v
@@ -5089,13 +5066,6 @@ if FirstTabBtn then
     FirstTabBtn.BackgroundTransparency = 0.95
     if Page then Page.Visible = true end
 end
-if (not getgenv().StandardLoaded) then
-    getgenv().StandardLoaded = true
-    local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-    if queue_on_teleport then
-        queue_on_teleport('loadstring(game:HttpGet("URL_SCRIPT_KAMU_DISINI_JIKA_ADA"))()') 
-    end
-end
 task.spawn(function()
     local Workspace = game:GetService("Workspace")
     local Players = game:GetService("Players")
@@ -5195,4 +5165,5 @@ task.spawn(function()
         Icon = "rbxassetid://10709752906"
     })
 end)
+
 
