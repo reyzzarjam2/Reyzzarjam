@@ -36,15 +36,6 @@ local Caps = {
     SetFPS = (typeof(setfpscap) == "function")
 }
 
-task.spawn(function()
-    if typeof(queue_on_teleport) == "function" then 
-        Caps.QueueTP = true
-    elseif typeof(syn) == "table" and typeof(syn.queue_on_teleport) == "function" then 
-        Caps.QueueTP = true
-    elseif typeof(fluxus) == "table" and typeof(fluxus.queue_on_teleport) == "function" then 
-        Caps.QueueTP = true
-    end
-end)
 local ConfigFolder = "ReyzzHub_UniversalConfigs"
 if not isfolder(ConfigFolder) then
     if makefolder then makefolder(ConfigFolder) end
@@ -5204,3 +5195,4 @@ task.spawn(function()
         Icon = "rbxassetid://10709752906"
     })
 end)
+
