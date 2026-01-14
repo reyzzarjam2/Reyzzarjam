@@ -56,7 +56,6 @@ function SaveUPConfig()
     end)
 end
 
--- 3. HAPUS 'local' di fungsi ini juga
 function LoadUPConfig()
     local FilePath = ConfigFolder .. "/MobileLayout.json"
     
@@ -73,32 +72,18 @@ function LoadUPConfig()
         end)
     end
 end
--- [[ START NATIVE JUMP BUTTON MODIFIER ]] --
 do
-    local JumpLoop = nil -- Variabel untuk menyimpan loop pemaksa
+    local JumpLoop = nil
 
     function UpdateMobileJump()
-        -- 1. Cek apakah device Touchscreen
         if not game:GetService("UserInputService").TouchEnabled then return end
-        
-        -- 2. Load Config
         if LoadUPConfig then LoadUPConfig() end
-
-        -- 3. Cek Status ON/OFF
         local IsActive = true
         if typeof(UP_Config) == "table" and UP_Config.CustomJumpEnabled ~= nil then
             IsActive = UP_Config.CustomJumpEnabled
         end
-
-        -- 4. Matikan Loop lama (Reset)
         if JumpLoop then JumpLoop:Disconnect() JumpLoop = nil end
-
-        -- Jika fitur dimatikan, kita berhenti di sini. 
-        -- Biarkan game mengembalikan posisi tombol ke defaultnya sendiri.
         if not IsActive then return end
-
-        -- 5. Mulai Loop Agresif (Setiap Frame)
-        -- Kita pakai RenderStepped supaya gerakan tombol mulus dan "menang" lawan script game
         local RunService = game:GetService("RunService")
         JumpLoop = RunService.RenderStepped:Connect(function()
             pcall(function()
@@ -106,36 +91,24 @@ do
                 local PlrGui = Plr and Plr:FindFirstChild("PlayerGui")
                 local Touch = PlrGui and PlrGui:FindFirstChild("TouchGui")
                 local Frame = Touch and Touch:FindFirstChild("TouchControlFrame")
-                
-                -- Cari tombol loncat asli (kadang namanya JumpButton atau JumpImage)
                 local JumpBtn = Frame and (Frame:FindFirstChild("JumpButton") or Frame:FindFirstChild("JumpImage"))
                 
                 if JumpBtn then
-                    -- Ambil nilai Config
                     local Scale = (UP_Config.JumpSize or 1)
                     local PosX = (UP_Config.JumpX or 0.8)
                     local PosY = (UP_Config.JumpY or 0.8)
-                    
-                    -- Paksa Ukuran & Posisi
-                    -- Ukuran base tombol roblox biasanya sekitar 120-150px
                     local BaseSize = 140 
                     
                     JumpBtn.Size = UDim2.new(0, BaseSize * Scale, 0, BaseSize * Scale)
                     JumpBtn.Position = UDim2.new(PosX, 0, PosY, 0)
-                    
-                    -- Pastikan tombol Visible (kadang game menyembunyikannya)
                     JumpBtn.Visible = true
                 end
             end)
         end)
     end
-    
-    -- Jalankan saat script pertama kali load
     task.delay(1, function() UpdateMobileJump() end)
-    
-    -- Update lagi saat respawn (karena TouchGui sering reset saat mati)
     game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1) -- Tunggu loading GUI
+        task.wait(1)
         UpdateMobileJump()
     end)
 end
@@ -556,6 +529,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.DisplayOrder = 2147483647
+
 State.MobileInput = {Move = Vector3.new(0,0,0), Up = 0, Zoom = 0} 
 IsTouch = game:GetService("UserInputService").TouchEnabled
 if IsTouch then
@@ -835,20 +809,30 @@ SpecText.TextXAlignment = Enum.TextXAlignment.Left
 SpecText.TextYAlignment = Enum.TextYAlignment.Top
 SpecText.TextWrapped = true
 local function RejoinServer()
-    ShowToast("Rejoining Server...")
-    if #Players:GetPlayers() <= 1 then
-        Players.LocalPlayer:Kick("Rejoining...") 
-        task.wait()
-        TeleportService:Teleport(game.PlaceId, LocalPlayer)
-    else
-        local success, err = pcall(function()
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-        end)
-        if not success then
-            ShowToast("Instance Rejoin Failed. Finding New...")
-            task.wait(1)
-            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    ShowToast("🔄 Rejoining Server...")
+    local ts = game:GetService("TeleportService")
+    local p = game:GetService("Players").LocalPlayer
+    
+    local connection
+    connection = ts.TeleportInitFailed:Connect(function(player, result, errorMessage)
+        if player == p then
+            ShowToast("⚠️ Rejoin Gagal ("..tostring(result).."). Mencari Server Baru...")
+            ts:Teleport(game.PlaceId, p)
+            if connection then connection:Disconnect() end
         end
+    end)
+    if game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0 then
+        ShowToast("Private Server Detected Mencoba Melakukan Rejoin")
+        ts:Teleport(game.PlaceId, p)
+        return
+    end
+    if #game:GetService("Players"):GetPlayers() <= 1 then
+         p:Kick("\nRejoining (Mencari Server Baru)...") 
+         task.wait()
+         ts:Teleport(game.PlaceId, p)
+    else
+        ShowToast("🔄 Mencoba masuk ke Room yang sama...")
+        ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
     end
 end
 local function JoinJobId()
@@ -1013,12 +997,18 @@ local function GetHitboxPart(character)
 end
 local function GetVisualPart(character)
     if not character then return nil end
-    return character.PrimaryPart 
-        or character:FindFirstChild("Head") 
-        or character:FindFirstChild("HumanoidRootPart") 
-        or character:FindFirstChild("Torso") 
-        or character:FindFirstChild("UpperTorso")
-        or character:FindFirstChildWhichIsA("BasePart")
+    if character.PrimaryPart then return character.PrimaryPart end
+    local bodyParts = {"HumanoidRootPart", "Torso", "UpperTorso", "Head"}
+    for _, name in pairs(bodyParts) do
+        local part = character:FindFirstChild(name)
+        if part then return part end
+    end
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("BasePart") then
+            return child
+        end
+    end
+    return nil
 end
 local function GetBestAimPart(char)
     if not char then return nil end
@@ -1168,10 +1158,15 @@ WoWPart.Anchored = true
 WoWPart.Transparency = 1
 WoWPart.CanCollide = false 
 UserInputService.JumpRequest:Connect(function()
-    if State.InfiniteJump then
-        if LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    if State.InfiniteJump and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        local root = GetVisualPart(LocalPlayer.Character)
+        
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        elseif root then
+            local currentVel = root.AssemblyLinearVelocity
+            root.AssemblyLinearVelocity = Vector3.new(currentVel.X, State.JumpPower or 50, currentVel.Z)
         end
     end
 end)
@@ -1190,57 +1185,94 @@ local function ToggleXRay(enable)
         end
     end
 end
-local function BoostFPS()
-    ShowToast("🚀 BOOSTING FPS... (Applying Low Graphics)")
-    local s = settings()
-    local r = s.Rendering
-    r.QualityLevel = "Level01"
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.Brightness = 0
-    for _, v in pairs(Lighting:GetChildren()) do
-        if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
-            v:Destroy()
-        end
-    end
-    local Terrain = workspace:FindFirstChildOfClass("Terrain")
-    if Terrain then
-        Terrain.WaterWaveSize = 0
-        Terrain.WaterWaveSpeed = 0
-        Terrain.WaterReflectance = 0
-        Terrain.WaterTransparency = 1
-        Terrain.Decoration = false
-    end
-    task.spawn(function()
-        for _, v in pairs(game:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.SmoothPlastic
-                v.Reflectance = 0
-                v.CastShadow = false
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
-                v.Enabled = false 
+local function SuperBoostFPS()
+    ShowToast("ULTRA BOOST: OPTIMIZING MAP & PLAYERS...")
+    task.wait(0.1)
+    local light = game:GetService("Lighting")
+    pcall(function()
+        light.GlobalShadows = false
+        light.FogEnd = 9e9
+        light.Brightness = 0
+        settings().Rendering.QualityLevel = "Level01"
+        
+        for _, v in pairs(light:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
+                v:Destroy()
             end
         end
     end)
-    task.spawn(function()
-        local StartTime = tick()
-        local Duration = 120 
-        ShowToast("🔒 FPS Lock: ACTIVE (2 Menit)")
-        ShowToast("🌙 Night Mode Applied")
-        while tick() - StartTime < Duration do
-            Lighting.ClockTime = 0  
-            Lighting.TimeOfDay = "00:00:00"
-            Lighting.Brightness = 0
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 9e9
-            settings().Rendering.QualityLevel = "Level01"
-            task.wait(1)
+
+    pcall(function()
+        local Terrain = workspace:FindFirstChildOfClass("Terrain")
+        if Terrain then
+            Terrain.WaterWaveSize = 0
+            Terrain.WaterWaveSpeed = 0
+            Terrain.WaterReflectance = 0
+            Terrain.WaterTransparency = 1
+            pcall(function() Terrain.Decoration = false end)
+            pcall(function() Terrain.DecorationEnabled = false end)
         end
-        ShowToast("✅ FPS Lock: Selesai (Settings Tetap)")
+    end)
+    local desc = workspace:GetDescendants() 
+    for _, v in pairs(desc) do
+        pcall(function()
+            if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+                v.Material = Enum.Material.SmoothPlastic 
+                v.Reflectance = 0
+                v.CastShadow = false
+                if v.Transparency < 1 then v.Color = Color3.fromRGB(255, 255, 255) end
+                if v:IsA("MeshPart") then v.TextureID = "" end
+
+            elseif v:IsA("Decal") or v:IsA("Texture") then
+                v:Destroy()
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+                v.Enabled = false 
+            end
+        end)
+    end
+    for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+        pcall(function()
+            if p.Character then
+                for _, v in pairs(p.Character:GetChildren()) do
+                    if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("CharacterMesh") or v:IsA("BodyColors") then
+                        v:Destroy() 
+                    end
+                end
+                
+                for _, part in pairs(p.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Material = Enum.Material.SmoothPlastic
+                        part.Color = Color3.fromRGB(200, 200, 200) 
+                        part.Transparency = 0
+                        part.CastShadow = false
+                        
+                        if part.Name == "Head" then
+                            local face = part:FindFirstChild("face")
+                            if face then face:Destroy() end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    pcall(function()
+        if game.Workspace:FindFirstChild("Debris") then game.Workspace.Debris:ClearAllChildren() end
     end)
 end
+
+State.FPSLoop = false
+State.FPSInterval = 1
+task.spawn(function()
+    while true do
+        if State.FPSLoop then
+            SuperBoostFPS()
+            task.wait(State.FPSInterval * 60)
+        else
+            task.wait(1)
+        end
+    end
+end)
 local function ClearMemory()
     local terrain = Workspace:FindFirstChildOfClass("Terrain")
     if terrain then 
@@ -1309,11 +1341,13 @@ local function StopFly()
     if FlyConnection then FlyConnection:Disconnect(); FlyConnection = nil end
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChild("Humanoid")
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local root = GetVisualPart(char) 
+    
     if hum then 
         hum.PlatformStand = false 
         hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
     end
+    
     if root then 
         root.AssemblyLinearVelocity = Vector3.zero 
         root.AssemblyAngularVelocity = Vector3.zero
@@ -1322,27 +1356,34 @@ end
 local function StartFly()
     StopFly() 
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local root = GetVisualPart(char) 
     local hum = char and char:FindFirstChild("Humanoid")
     local cam = workspace.CurrentCamera
-    if not root or not hum then return end
-    hum.PlatformStand = true 
+    
+    if not root then return end 
+    if hum then hum.PlatformStand = true end 
+    
     local targetCFrame = root.CFrame 
+
     FlyConnection = game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
-        if not State.Fly or not char or not root or not hum or hum.Health <= 0 then
+        if not State.Fly or not char or not root then
             StopFly()
             return
         end
+
         local moveDir = Vector3.zero
         local camCF = cam.CFrame
         local UIS = game:GetService("UserInputService")
+        
         if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCF.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCF.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCF.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCF.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+        
         local speed = State.FlySpeed or 50
+        
         if moveDir.Magnitude > 0 then
             moveDir = moveDir.Unit
             targetCFrame = targetCFrame + (moveDir * (speed * deltaTime))
@@ -1350,8 +1391,9 @@ local function StartFly()
         else
             targetCFrame = CFrame.new(targetCFrame.Position, targetCFrame.Position + camCF.LookVector)
         end
+        
         root.CFrame = targetCFrame
-        root.AssemblyLinearVelocity = Vector3.new(0, -2, 0) 
+        root.AssemblyLinearVelocity = Vector3.zero 
         root.AssemblyAngularVelocity = Vector3.zero
     end)
 end
@@ -1359,12 +1401,10 @@ TargetCamPos = nil
 TargetCamRot = nil
 State.FreecamFOV = 70 
 CamFocusPart = nil 
--- [[ GLOBAL VARIABLES ]] --
 TargetCamPos = nil
 TargetCamRot = nil
 State.FreecamFOV = 70 
 
--- [[ UPDATED FREECAM LOGIC V3 (CPU OPTIMIZED - NO RENDER STREAM) ]] --
 function ToggleFreecam(enable)
     State.Freecam = enable
     local UIS = game:GetService("UserInputService")
@@ -1939,47 +1979,125 @@ local function RefreshGuiSpy()
         end
     end
 end
-local StatsFrame = Instance.new("Frame", ScreenGui); StatsFrame.Name = "StatsPanel"; StatsFrame.Size = UDim2.new(0, 220, 0, 180); StatsFrame.Position = UDim2.new(0, 10, 0.4, 0); RegisterTheme(StatsFrame, "BackgroundColor3", "Background"); StatsFrame.Visible = false
-Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 8); local StatsStroke = Instance.new("UIStroke", StatsFrame); RegisterTheme(StatsStroke, "Color", "Accent"); StatsStroke.Thickness = 1
+-- [SYSTEM MONITOR UI - GLOBAL VERSION (ANTI-LIMIT)]
+-- Variabel dibuat Global (tanpa 'local') agar tidak kena limit script utama
+
+StatsFrame = Instance.new("Frame", ScreenGui)
+StatsFrame.Name = "StatsPanel"
+StatsFrame.Size = UDim2.new(0, 220, 0, 200)
+StatsFrame.Position = UDim2.new(0, 10, 0.4, 0)
+RegisterTheme(StatsFrame, "BackgroundColor3", "Background")
+StatsFrame.Visible = false
+Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 8)
+
+StatsStroke = Instance.new("UIStroke", StatsFrame)
+RegisterTheme(StatsStroke, "Color", "Accent")
+StatsStroke.Thickness = 1
 MakeDraggable(StatsFrame)
-local StatsHeader = Instance.new("TextLabel", StatsFrame); StatsHeader.Size = UDim2.new(1, 0, 0, 25); StatsHeader.BackgroundTransparency = 1; StatsHeader.Text = "SYSTEM MONITOR"; RegisterTheme(StatsHeader, "TextColor3", "Accent"); StatsHeader.Font = Enum.Font.GothamBlack; StatsHeader.TextSize = 13
-local StatsContainer = Instance.new("Frame", StatsFrame); StatsContainer.Size = UDim2.new(1, -10, 1, -30); StatsContainer.Position = UDim2.new(0, 5, 0, 30); StatsContainer.BackgroundTransparency = 1
-local StatsList = Instance.new("UIListLayout", StatsContainer); StatsList.Padding = UDim.new(0, 2)
-local function CreateStatLabel(name)
-    local f = Instance.new("Frame", StatsContainer); f.Size = UDim2.new(1, 0, 0, 18); f.BackgroundTransparency = 1
-    local l = Instance.new("TextLabel", f); l.Size = UDim2.new(0.5, 0, 1, 0); l.BackgroundTransparency = 1; l.Text = name; RegisterTheme(l, "TextColor3", "TextDim"); l.Font = Enum.Font.GothamBold; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
-    local v = Instance.new("TextLabel", f); v.Size = UDim2.new(0.5, 0, 1, 0); v.Position = UDim2.new(0.5, 0, 0, 0); v.BackgroundTransparency = 1; v.Text = "..."; RegisterTheme(v, "TextColor3", "Text"); v.Font = Enum.Font.Code; v.TextSize = 12; v.TextXAlignment = Enum.TextXAlignment.Right
+
+StatsHeader = Instance.new("TextLabel", StatsFrame)
+StatsHeader.Size = UDim2.new(1, 0, 0, 25)
+StatsHeader.BackgroundTransparency = 1
+StatsHeader.Text = "SYSTEM MONITOR"
+RegisterTheme(StatsHeader, "TextColor3", "Accent")
+StatsHeader.Font = Enum.Font.GothamBlack
+StatsHeader.TextSize = 13
+
+StatsContainer = Instance.new("Frame", StatsFrame)
+StatsContainer.Size = UDim2.new(1, -10, 1, -30)
+StatsContainer.Position = UDim2.new(0, 5, 0, 30)
+StatsContainer.BackgroundTransparency = 1
+
+StatsList = Instance.new("UIListLayout", StatsContainer)
+StatsList.Padding = UDim.new(0, 2)
+
+-- Fungsi Global Helper
+function CreateStatLabel(name)
+    local f = Instance.new("Frame", StatsContainer) -- local di dalam fungsi aman
+    f.Size = UDim2.new(1, 0, 0, 18)
+    f.BackgroundTransparency = 1
+    
+    local l = Instance.new("TextLabel", f)
+    l.Size = UDim2.new(0.5, 0, 1, 0)
+    l.BackgroundTransparency = 1
+    l.Text = name
+    RegisterTheme(l, "TextColor3", "TextDim")
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 12
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local v = Instance.new("TextLabel", f)
+    v.Size = UDim2.new(0.5, 0, 1, 0)
+    v.Position = UDim2.new(0.5, 0, 0, 0)
+    v.BackgroundTransparency = 1
+    v.Text = "..."
+    RegisterTheme(v, "TextColor3", "Text")
+    v.Font = Enum.Font.Code
+    v.TextSize = 12
+    v.TextXAlignment = Enum.TextXAlignment.Right
     return v
 end
-local FPSLabel = CreateStatLabel("FPS:")
-local PingLabel = CreateStatLabel("Ping:")
-local PlrLabel = CreateStatLabel("Players:")
-local MemLabel = CreateStatLabel("Memory:")
-local RecvLabel = CreateStatLabel("Recv:")
-local SentLabel = CreateStatLabel("Sent:")
-local InstLabel = CreateStatLabel("Instances:")
+
+-- Label Indikator (Global)
+FPSLabel  = CreateStatLabel("FPS:")
+CPULabel  = CreateStatLabel("CPU (ms):")
+PingLabel = CreateStatLabel("Ping:")
+PlrLabel  = CreateStatLabel("Players:")
+MemLabel  = CreateStatLabel("Memory:")
+RecvLabel = CreateStatLabel("Recv:")
+SentLabel = CreateStatLabel("Sent:")
+InstLabel = CreateStatLabel("Instances:")
+
+-- Loop Update (Global Thread)
 task.spawn(function()
     while true do
+        -- Cek variable State global
         if State.ShowStats and StatsFrame.Visible then
-            local fps = math.floor(1 / RunService.RenderStepped:Wait())
-            FPSLabel.Text = tostring(fps)
+            -- Hitung Frame Time (CPU Load)
+            local dt = game:GetService("RunService").RenderStepped:Wait() 
+            local fps = math.floor(1 / (dt + 0.0001))
+            local cpuMs = math.floor(dt * 1000)
+            
+            FPSLabel.Text = fps
+            CPULabel.Text = cpuMs .. " ms"
+            
+            if cpuMs < 20 then
+                CPULabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+            elseif cpuMs < 50 then
+                CPULabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+            else
+                CPULabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            end
+
+            -- Ping
             local pingVal = 0
-            pcall(function() pingVal = math.floor(LocalPlayer:GetNetworkPing() * 2000) end)
-            if pingVal == 0 then pcall(function() pingVal = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue()) end) end
+            pcall(function() pingVal = math.floor(game:GetService("Players").LocalPlayer:GetNetworkPing() * 2000) end)
+            if pingVal == 0 then 
+                pcall(function() pingVal = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end) 
+            end
             PingLabel.Text = pingVal .. " ms"
-            pcall(function() PlrLabel.Text = #Players:GetPlayers() .. " / " .. Players.MaxPlayers end)
-            local mem = math.floor(StatsService:GetTotalMemoryUsageMb())
+
+            -- Players
+            pcall(function() PlrLabel.Text = #game:GetService("Players"):GetPlayers() .. " / " .. game:GetService("Players").MaxPlayers end)
+
+            -- Memory
+            local mem = 0
+            pcall(function() mem = math.floor(game:GetService("Stats"):GetTotalMemoryUsageMb()) end)
             MemLabel.Text = mem .. " MB"
+
+            -- Network
             local recv = 0; local sent = 0
-            pcall(function() recv = math.floor(StatsService.Network.ServerStatsItem["Data Receive"]:GetValue()) end)
-            pcall(function() sent = math.floor(StatsService.Network.ServerStatsItem["Data Send"]:GetValue()) end)
+            pcall(function() recv = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Receive"]:GetValue()) end)
+            pcall(function() sent = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Send"]:GetValue()) end)
             RecvLabel.Text = recv .. " KB/s"
             SentLabel.Text = sent .. " KB/s"
-            pcall(function() InstLabel.Text = tostring(#Workspace:GetDescendants()) end)
+
+            -- Instances
+            pcall(function() InstLabel.Text = tostring(#workspace:GetDescendants()) end)
         else
             task.wait(1)
         end
-        task.wait(0.5) 
+        task.wait(0.5)
     end
 end)
 local AnimLogFrame = Instance.new("Frame", ScreenGui); AnimLogFrame.Name = GetRandomName() AnimLogFrame.Size = UDim2.new(0, 220, 0, 160); AnimLogFrame.Position = UDim2.new(0, 10, 0.5, -80); RegisterTheme(AnimLogFrame, "BackgroundColor3", "Background"); AnimLogFrame.Visible = false
@@ -1994,46 +2112,91 @@ local UpdateAnimLogger, InitChatLogger
 do
     local AnimLoggerConnection = nil 
     local ActiveAnimLabels = {}
+
     local function ClearAnimLog() 
         for _, child in pairs(ALContainer:GetChildren()) do 
-            if child:IsA("TextButton") then child:Destroy() end 
+            if child:IsA("Frame") then child:Destroy() end 
         end 
         ActiveAnimLabels = {} 
     end
-    local function ClearEventLog() for _, child in pairs(ELContainer:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end end
-    local function ClearChatLog() for _, child in pairs(CLContainer:GetChildren()) do if child:IsA("TextLabel") then child:Destroy() end end end
+
+    local function ClearChatLog() 
+        for _, child in pairs(CLContainer:GetChildren()) do 
+            if child:IsA("TextLabel") then child:Destroy() end 
+        end 
+    end
+
     UpdateAnimLogger = function()
+        -- Bersihkan koneksi lama
         if AnimLoggerConnection then 
             AnimLoggerConnection:Disconnect()
             AnimLoggerConnection = nil
         end
+
+        -- Jika fitur dimatikan
         if not State.AnimLogger then 
-            AnimLogFrame.Visible = false; 
+            AnimLogFrame.Visible = false
             ClearAnimLog() 
             return 
         end
+
         AnimLogFrame.Visible = true
         local char = LocalPlayer.Character; if not char then return end
         local hum = char:FindFirstChild("Humanoid"); if not hum then return end
         local animator = hum:FindFirstChildOfClass("Animator"); if not animator then return end
+
         AnimLoggerConnection = animator.AnimationPlayed:Connect(function(track)
             if not State.AnimLogger then return end
+            
             local animId = track.Animation.AnimationId
             local idNum = string.match(animId, "%d+") or "Unknown"
+            
+            -- Cek duplikat biar gak spam list
             if ActiveAnimLabels[track] then return end
-            local lbl = Instance.new("TextButton", ALContainer)
-            lbl.Size = UDim2.new(1, 0, 0, 20)
+
+            -- [UPDATE TAMPILAN BARU: ROW DENGAN TOMBOL COPY]
+            local Row = Instance.new("Frame", ALContainer)
+            Row.Size = UDim2.new(1, 0, 0, 28) -- Tinggi baris
+            Row.BackgroundTransparency = 1
+            
+            -- Label ID (Kiri)
+            local lbl = Instance.new("TextLabel", Row)
+            lbl.Size = UDim2.new(0.65, 0, 1, 0)
+            lbl.Position = UDim2.new(0, 0, 0, 0)
             lbl.BackgroundTransparency = 1
             lbl.Text = "ID: " .. idNum
             RegisterTheme(lbl, "TextColor3", "Text")
             lbl.Font = Enum.Font.Code
-            lbl.TextSize = 13
+            lbl.TextSize = 12
             lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.MouseButton1Click:Connect(function() 
+            
+            -- Tombol Copy (Kanan)
+            local CopyBtn = Instance.new("TextButton", Row)
+            CopyBtn.Size = UDim2.new(0.3, 0, 0.8, 0)
+            CopyBtn.Position = UDim2.new(0.68, 0, 0.1, 0)
+            CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255) -- Warna Biru
+            CopyBtn.Text = "COPY"
+            CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            CopyBtn.Font = Enum.Font.GothamBold
+            CopyBtn.TextSize = 10
+            Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 4)
+            
+            -- Fungsi Copy
+            CopyBtn.MouseButton1Click:Connect(function() 
                 setclipboard(idNum)
-                ShowToast("Anim ID Copied") 
+                ShowToast("✅ ID Copied: " .. idNum)
+                
+                -- Efek Visual Tombol Berubah
+                CopyBtn.Text = "COPIED!"
+                CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                task.wait(1)
+                CopyBtn.Text = "COPY"
+                CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
             end)
-            ActiveAnimLabels[track] = lbl
+
+            ActiveAnimLabels[track] = Row
+
+            -- Hapus dari list jika animasi berhenti
             track.Stopped:Connect(function() 
                 if ActiveAnimLabels[track] then 
                     ActiveAnimLabels[track]:Destroy()
@@ -2219,21 +2382,40 @@ RunService.RenderStepped:Connect(function(dt)
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 local char = p.Character
-                if State.MasterESP and char then
-                    local targetPart = GetVisualPart(char)
+                -- Cek HumanoidRootPart untuk memastikan karakter valid
+                local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+                
+                if State.MasterESP and char and rootPart then
+                    local targetPart = GetVisualPart(char) -- Biasanya Head/Root
+                    
                     if targetPart then
                         local myRoot = GetVisualPart(LocalPlayer.Character)
                         local dist = (myRoot and math.floor((myRoot.Position - targetPart.Position).Magnitude)) or 0
                         local targetColor = GetTeamColor(p) 
-                        local info = char:FindFirstChild("ReyzzESP_V2")
+                        
+                        -- Cari atau Buat GUI ESP
+                        local info = char:FindFirstChild("ReyzzWSP_V2")
                         if not info then
-                            info = Instance.new("BillboardGui", char); info.Name = "ReyzzESP_V2"; info.Size = UDim2.new(0, 200, 0, 100); info.StudsOffset = Vector3.new(0, 4, 0); info.AlwaysOnTop = true 
-                            local layout = Instance.new("UIListLayout", info); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-                            local nLbl = Instance.new("TextLabel", info); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,15); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBold; nLbl.TextSize = 14; nLbl.TextStrokeTransparency = 0; nLbl.LayoutOrder = 1
-                            local hLbl = Instance.new("TextLabel", info); hLbl.Name = "HPLbl"; hLbl.Size = UDim2.new(1,0,0,15); hLbl.BackgroundTransparency = 1; hLbl.Font = Enum.Font.Code; hLbl.TextSize = 12; hLbl.TextStrokeTransparency = 0; hLbl.LayoutOrder = 2
-                            local dLbl = Instance.new("TextLabel", info); dLbl.Name = "DistLbl"; dLbl.Size = UDim2.new(1,0,0,15); dLbl.BackgroundTransparency = 1; dLbl.Font = Enum.Font.GothamBold; dLbl.TextSize = 11; dLbl.TextStrokeTransparency = 0; dLbl.LayoutOrder = 3
+                            info = Instance.new("BillboardGui", char)
+                            info.Name = "ReyzzWSP_V2"
+                            info.Size = UDim2.new(0, 200, 0, 100)
+                            info.StudsOffset = Vector3.new(0, 4, 0)
+                            info.AlwaysOnTop = true -- Tembus Tembok
+                            info.MaxDistance = math.huge -- [FIX] Jarak Tak Terbatas
+                            
+                            local layout = Instance.new("UIListLayout", info)
+                            layout.SortOrder = Enum.SortOrder.LayoutOrder
+                            layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                            
+                            local nLbl = Instance.new("TextLabel", info); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,15); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBold; nLbl.TextSize = 13; nLbl.TextStrokeTransparency = 0; nLbl.LayoutOrder = 1
+                            local hLbl = Instance.new("TextLabel", info); hLbl.Name = "HPLbl"; hLbl.Size = UDim2.new(1,0,0,15); hLbl.BackgroundTransparency = 1; hLbl.Font = Enum.Font.Code; hLbl.TextSize = 11; hLbl.TextStrokeTransparency = 0; hLbl.LayoutOrder = 2
+                            local dLbl = Instance.new("TextLabel", info); dLbl.Name = "DistLbl"; dLbl.Size = UDim2.new(1,0,0,15); dLbl.BackgroundTransparency = 1; dLbl.Font = Enum.Font.GothamBold; dLbl.TextSize = 10; dLbl.TextStrokeTransparency = 0; dLbl.LayoutOrder = 3
                         end
-                        info.Enabled = true; info.Adornee = targetPart
+
+                        info.Enabled = true
+                        info.Adornee = targetPart -- Tempel ke Kepala/Badan
+                        
+                        -- Update Nama & Warna
                         local nameL = info:FindFirstChild("NameLbl")
                         if nameL then 
                             nameL.Text = p.DisplayName
@@ -2244,29 +2426,54 @@ RunService.RenderStepped:Connect(function(dt)
                                 nameL.TextColor3 = targetColor 
                             end 
                         end
-                        local hpL = info:FindFirstChild("HPLbl"); local hum = char:FindFirstChild("Humanoid")
-                        if hpL then if hum then local hp = math.floor(hum.Health); local perc = math.clamp(hp / hum.MaxHealth, 0, 1); hpL.Text = "HP: " .. hp; hpL.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), perc) else hpL.Text = "HP: ?"; hpL.TextColor3 = Color3.new(1,1,1) end end
+                        
+                        -- Update HP
+                        local hpL = info:FindFirstChild("HPLbl")
+                        local hum = char:FindFirstChild("Humanoid")
+                        if hpL then 
+                            if hum then 
+                                local hp = math.floor(hum.Health)
+                                local perc = math.clamp(hp / hum.MaxHealth, 0, 1)
+                                hpL.Text = "HP: " .. hp
+                                hpL.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), perc) 
+                            else 
+                                hpL.Text = "HP: ?"
+                                hpL.TextColor3 = Color3.new(1,1,1) 
+                            end 
+                        end
+                        
+                        -- Update Jarak
                         local distL = info:FindFirstChild("DistLbl")
                         if distL then 
                             local txt = "[" .. dist .. "m]"
-                            if State.ShowInventory then local tool = char:FindFirstChildOfClass("Tool"); if tool then txt = txt .. "\n[item: " .. tool.Name .. "]" end end
-                            distL.Text = txt; distL.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(255, 255, 255), math.clamp(dist/150, 0, 1))
+                            if State.ShowInventory then 
+                                local tool = char:FindFirstChildOfClass("Tool")
+                                if tool then txt = txt .. "\n[Item: " .. tool.Name .. "]" end 
+                            end
+                            distL.Text = txt
+                            -- Ubah warna jarak: Makin jauh makin putih, dekat makin merah
+                            distL.TextColor3 = Color3.fromRGB(255, 50, 50):Lerp(Color3.fromRGB(255, 255, 255), math.clamp(dist/300, 0, 1))
                         end
+
+                        -- Update Highlight (Kotak Nyala)
+                        -- PENTING: Highlight punya limit 31 player. Kita bungkus pcall biar gak error.
                         local hl = char:FindFirstChild("GHighlight")
                         if not hl then 
                             hl = Instance.new("Highlight", char)
                             hl.Name = "GHighlight"
                             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop 
                         end
+                        
                         hl.Enabled = true
                         hl.FillColor = targetColor
                         hl.OutlineColor = Color3.fromRGB(255, 255, 255) 
-                        hl.FillTransparency = 0.35 
-                        hl.OutlineTransparency = 0 
+                        hl.FillTransparency = 0.5 
+                        hl.OutlineTransparency = 0
                     end
                 else
+                    -- Matikan ESP jika fitur OFF atau player mati
                     if char then
-                        if char:FindFirstChild("ReyzzESP_V2") then char.ReyzzESP_V2.Enabled = false end
+                        if char:FindFirstChild("ReyzzWSP_V2") then char.ReyzzWSP_V2.Enabled = false end
                         if char:FindFirstChild("GHighlight") then char.GHighlight.Enabled = false end
                     end
                 end
@@ -2716,13 +2923,18 @@ local function CreateToggle(Page, Text, Callback, Default)
             TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(1, -20, 0.5, -9)}):Play()
             RegisterTheme(Circle, "BackgroundColor3", "Accent")
             if not skipToast then ShowToast(Text .. ": ON 🟢") end
+            
+            -- Panggil Fungsi Global tadi
+            if UpdateActiveIndicator then UpdateActiveIndicator(Text, true) end
         else
             TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -9)}):Play()
             RegisterTheme(Circle, "BackgroundColor3", "TextDim")
             if not skipToast then ShowToast(Text .. ": OFF 🔴") end
+            
+            -- Panggil Fungsi Global tadi
+            if UpdateActiveIndicator then UpdateActiveIndicator(Text, false) end
         end
         Callback(Toggled)
-        UpdateActiveList(Text, Toggled)
     end
     Wrapper.MouseButton1Click:Connect(function() SetState(not Toggled) end)
     if Default then task.spawn(function() SetState(true, true) end) end
@@ -2900,6 +3112,7 @@ end
 local function CreateDropdown(Page, Text, Options, Default, Callback, UseSearch)
     if UseSearch == nil then UseSearch = true end
     local BaseZIndex = 5 
+    local CurrentSelection = Default
     local Wrapper = Instance.new("Frame", Page)
     Wrapper.Name = "Dropdown_" .. Text
     Wrapper.Size = UDim2.new(0.95, 0, 0, 50) 
@@ -2935,22 +3148,62 @@ local function CreateDropdown(Page, Text, Options, Default, Callback, UseSearch)
     Container.BackgroundTransparency = 1
     Container.ZIndex = BaseZIndex + 3
     Container.Visible = false 
-    local SearchBox = Instance.new("TextBox", Container)
+    
+    local SearchWrapper = Instance.new("Frame", Container)
+    SearchWrapper.Name = "SearchWrapper"
+    SearchWrapper.Size = UDim2.new(1, -10, 0, 32) 
+    SearchWrapper.Position = UDim2.new(0, 5, 0, 0)
+    
+    SearchWrapper.BackgroundColor3 = Color3.fromRGB(10, 10, 12) 
+    SearchWrapper.BackgroundTransparency = 0 
+    
+    SearchWrapper.BorderSizePixel = 0
+    SearchWrapper.ZIndex = BaseZIndex + 4
+    SearchWrapper.Visible = UseSearch
+    Instance.new("UICorner", SearchWrapper).CornerRadius = UDim.new(0, 6)
+
+    local SearchStroke = Instance.new("UIStroke", SearchWrapper)
+    SearchStroke.Thickness = 1.5
+    RegisterTheme(SearchStroke, "Color", "Accent")
+    SearchStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    SearchStroke.Transparency = 0 
+
+    local SearchBox = Instance.new("TextBox", SearchWrapper)
     SearchBox.Name = "SearchBox"
     SearchBox.Size = UDim2.new(1, 0, 0, 25)
+    -- SearchBox.Position = UDim2.new(0, 32, 0, 0)
     RegisterTheme(SearchBox, "BackgroundColor3", "Background")
     SearchBox.Text = ""
-    SearchBox.PlaceholderText = "🔍 Search..."
-    RegisterTheme(SearchBox, "TextColor3", "Text")
-    RegisterTheme(SearchBox, "PlaceholderColor3", "TextDim")
-    SearchBox.Font = Enum.Font.GothamMedium
-    SearchBox.TextSize = 12
+    SearchBox.PlaceholderText = "  Search options..."
+    
+    SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
+    SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
     Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 6)
-    SearchBox.Visible = UseSearch
-    SearchBox.ZIndex = BaseZIndex + 4
-    local DropFrame = Instance.new("ScrollingFrame", Container) 
-    DropFrame.Position = UseSearch and UDim2.new(0, 0, 0, 30) or UDim2.new(0, 0, 0, 0)
-    DropFrame.Size = UseSearch and UDim2.new(1, 0, 1, -30) or UDim2.new(1, 0, 1, 0)
+    SearchBox.Font = Enum.Font.GothamMedium
+    SearchBox.TextSize = 13
+    SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+    SearchBox.ClearTextOnFocus = false
+    SearchBox.ZIndex = BaseZIndex + 5
+    
+    SearchBox.Focused:Connect(function()
+        TweenService:Create(SearchStroke, TweenInfo.new(0.2), {Color = CurrentTheme.Accent}):Play()
+        TweenService:Create(SearchIcon, TweenInfo.new(0.2), {ImageColor3 = CurrentTheme.Accent}):Play()
+        TweenService:Create(SearchWrapper, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 20, 25)}):Play()
+    end)
+
+    SearchBox.FocusLost:Connect(function()
+        TweenService:Create(SearchStroke, TweenInfo.new(0.2), {Color = CurrentTheme.Accent}):Play()
+        TweenService:Create(SearchIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(150, 150, 150)}):Play()
+        TweenService:Create(SearchWrapper, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(10, 10, 12)}):Play()
+    end)
+    local DropFrame = Instance.new("ScrollingFrame", Container)
+    if UseSearch then
+        DropFrame.Position = UDim2.new(0, 0, 0, 38) 
+        DropFrame.Size = UDim2.new(1, 0, 1, -38)
+    else
+        DropFrame.Position = UDim2.new(0, 0, 0, 0)
+        DropFrame.Size = UDim2.new(1, 0, 1, 0)
+    end
     DropFrame.BackgroundTransparency = 1
     DropFrame.BorderSizePixel = 0
     DropFrame.ScrollBarThickness = 2
@@ -2996,6 +3249,7 @@ local function CreateDropdown(Page, Text, Options, Default, Callback, UseSearch)
                 OptBtn.MouseLeave:Connect(function() OptBtn.TextColor3 = CurrentTheme.TextDim end)
                 OptBtn.MouseButton1Click:Connect(function()
                     MainBtn.Text = tostring(opt) .. "  ▼"
+                    CurrentSelection = opt
                     Callback(opt)
                     isOpened = false
                     MainBtn.Text = MainBtn.Text:gsub("▲", "▼")
@@ -3043,7 +3297,20 @@ local function CreateDropdown(Page, Text, Options, Default, Callback, UseSearch)
     function DropdownAPI:Refresh(NewList)
         Options = NewList
         RenderList("")
-        MainBtn.Text = "Select...  ▼"
+        local found = false
+        for _, v in pairs(NewList) do
+            if tostring(v) == tostring(CurrentSelection) then
+                found = true
+                break
+            end
+        end
+
+        if found then
+            MainBtn.Text = tostring(CurrentSelection) .. "  ▼"
+        else
+            MainBtn.Text = Default .. "  ▼"
+            CurrentSelection = Default
+        end
     end
     return DropdownAPI 
 end
@@ -3305,10 +3572,11 @@ local MobilePage = nil
 if game:GetService("UserInputService").TouchEnabled then
     MobilePage = CreateTab("Mobile", "rbxassetid://6034818379")
 end
+T_Status = CreateTab("Status", "rbxassetid://9692125126")
 task.wait(0.1)
 local T7 = CreateTab("About", "rbxassetid://116139826677453")
 task.wait(0.1)
-local T_Settings = CreateTab("Settings", "rbxassetid://10709804836")
+local T_Settings = CreateTab("Settings", "rbxassetid://11956055886")
 ShowToast("Script Loaded Successfully!")
 do
     local Box_Move = CreateSection(T1, "CHARACTER MOVEMENT")
@@ -3617,6 +3885,46 @@ do
             end 
         end
     end)
+    local AntiPushConnection = nil
+    CreateToggle(Box_Safety, "🛡️ Anti-Push (Anchor Idle)", function(v)
+        State.AntiPush = v
+        if AntiPushConnection then 
+            AntiPushConnection:Disconnect() 
+            AntiPushConnection = nil 
+        end
+
+        if v then
+            ShowToast("Anti-Push: ON (Smart Anchor)")
+            local RunService = game:GetService("RunService")
+            
+            AntiPushConnection = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
+                
+                if root and hum then
+                    if hum.MoveDirection.Magnitude <= 0.1 and hum.FloorMaterial ~= Enum.Material.Air then
+                        if not root.Anchored then 
+                            root.Anchored = true 
+                            root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                            root.AssemblyAngularVelocity = Vector3.new(0,0,0)
+                        end
+                    else
+                        if root.Anchored then 
+                            root.Anchored = false 
+                        end
+                    end
+                end
+            end)
+        else
+            ShowToast("Anti-Push: OFF")
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.Anchored = false
+            end
+        end
+    end)
+    State.UIListeners["AntiPush"] = function(val) 
+    end
     local Box_Panic = CreateSection(T1, "EMERGENCY")
     local PanicBtn = CreateButton(Box_Panic, "🚨 PANIC MODE (DISABLE ALL)", function()
         for name, updateFunc in pairs(Toggles) do
@@ -3641,173 +3949,313 @@ do
     CreateLabel(Box_Panic, C("Warning: Tombol ini akan mematikan paksa semua fitur cheat.", 255, 100, 100))
 end
 do
-local function BuildDashboardTab()
+function BuildDashboardTab()
+    for _, v in pairs(T_Dash:GetChildren()) do
+        if v:IsA("Frame") or v:IsA("UIListLayout") or v:IsA("UIPadding") then v:Destroy() end
+    end
+
     local DashLayout = Instance.new("UIListLayout", T_Dash)
     DashLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    DashLayout.Padding = UDim.new(0, 15) 
+    DashLayout.Padding = UDim.new(0, 12)
+    
     local DashPad = Instance.new("UIPadding", T_Dash)
     DashPad.PaddingTop = UDim.new(0, 15)
     DashPad.PaddingLeft = UDim.new(0, 15)
     DashPad.PaddingRight = UDim.new(0, 15)
-    local HeaderCard = Instance.new("Frame", T_Dash)
-    HeaderCard.Size = UDim2.new(1, 0, 0, 100) 
-    HeaderCard.LayoutOrder = 1
-    RegisterTheme(HeaderCard, "BackgroundColor3", "ElementBG")
-    Instance.new("UICorner", HeaderCard).CornerRadius = UDim.new(0, 12)
-    local HGrad = Instance.new("UIGradient", HeaderCard)
-    HGrad.Rotation = 45
-    HGrad.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), 
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(200,200,200))
+    DashPad.PaddingBottom = UDim.new(0, 15)
+
+    -- [1. PROFILE CARD (Modern Header)]
+    local ProfileCard = Instance.new("Frame", T_Dash)
+    ProfileCard.Name = "ProfileCard"
+    ProfileCard.Size = UDim2.new(1, 0, 0, 80)
+    ProfileCard.LayoutOrder = 1
+    RegisterTheme(ProfileCard, "BackgroundColor3", "ElementBG")
+    Instance.new("UICorner", ProfileCard).CornerRadius = UDim.new(0, 8)
+    
+    local PGrad = Instance.new("UIGradient", ProfileCard)
+    PGrad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
     }
-    local AvatarImg = Instance.new("ImageLabel", HeaderCard)
-    AvatarImg.Size = UDim2.new(0, 70, 0, 70) 
-    AvatarImg.Position = UDim2.new(0, 15, 0, 15)
+    PGrad.Rotation = 45
+
+    -- Avatar Image
+    local AvatarImg = Instance.new("ImageLabel", ProfileCard)
+    AvatarImg.Size = UDim2.new(0, 60, 0, 60)
+    AvatarImg.Position = UDim2.new(0, 12, 0, 10)
     AvatarImg.BackgroundTransparency = 1
     AvatarImg.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-    local AvaCorner = Instance.new("UICorner", AvatarImg)
-    AvaCorner.CornerRadius = UDim.new(1, 0) 
+    Instance.new("UICorner", AvatarImg).CornerRadius = UDim.new(1, 0) -- Bulat Sempurna
     local AvaStroke = Instance.new("UIStroke", AvatarImg)
-    RegisterTheme(AvaStroke, "Color", "Accent")
-    AvaStroke.Thickness = 2
-    AvaStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    local WelcomeLbl = Instance.new("TextLabel", HeaderCard)
-    WelcomeLbl.Size = UDim2.new(1, -110, 0, 25)
-    WelcomeLbl.Position = UDim2.new(0, 100, 0, 15)
-    WelcomeLbl.BackgroundTransparency = 1
-    WelcomeLbl.Text = "Hello, " .. LocalPlayer.DisplayName
-    RegisterTheme(WelcomeLbl, "TextColor3", "Accent")
-    WelcomeLbl.Font = Enum.Font.GothamBlack
-    WelcomeLbl.TextSize = 22 
-    WelcomeLbl.TextXAlignment = Enum.TextXAlignment.Left
-    local InfoLbl = Instance.new("TextLabel", HeaderCard)
-    InfoLbl.Size = UDim2.new(1, -110, 0, 20)
-    InfoLbl.Position = UDim2.new(0, 100, 0, 42)
-    InfoLbl.BackgroundTransparency = 1
-    InfoLbl.Text = "@" .. LocalPlayer.Name .. "  |  UID: " .. LocalPlayer.UserId
-    RegisterTheme(InfoLbl, "TextColor3", "TextDim")
-    InfoLbl.Font = Enum.Font.GothamMedium
-    InfoLbl.TextSize = 13
-    InfoLbl.TextXAlignment = Enum.TextXAlignment.Left
-    local StatusTag = Instance.new("Frame", HeaderCard)
-    StatusTag.Size = UDim2.new(0, 100, 0, 22)
-    StatusTag.Position = UDim2.new(0, 100, 0, 65)
-    StatusTag.BackgroundColor3 = Color3.fromRGB(0, 200, 100) 
-    Instance.new("UICorner", StatusTag).CornerRadius = UDim.new(0, 4)
-    local StatusText = Instance.new("TextLabel", StatusTag)
-    StatusText.Size = UDim2.new(1, 0, 1, 0)
-    StatusText.BackgroundTransparency = 1
-    StatusText.Text = "PREMIUM V" .. State.CurrentVersion
-    StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    StatusText.Font = Enum.Font.GothamBold
-    StatusText.TextSize = 11
-    local StatsContainer = Instance.new("Frame", T_Dash)
-    StatsContainer.Size = UDim2.new(1, 0, 0, 160) 
-    StatsContainer.BackgroundTransparency = 1
-    StatsContainer.LayoutOrder = 2
-    local Grid = Instance.new("UIGridLayout", StatsContainer)
-    Grid.CellSize = UDim2.new(0.48, 0, 0, 70) 
-    Grid.CellPadding = UDim2.new(0, 10, 0, 10)
-    Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    local function CreateStatWidget(Title, IconText)
-        local Box = Instance.new("Frame", StatsContainer)
-        RegisterTheme(Box, "BackgroundColor3", "ElementBG")
-        Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 8)
-        local AccentBar = Instance.new("Frame", Box)
-        AccentBar.Size = UDim2.new(0, 4, 1, 0)
-        RegisterTheme(AccentBar, "BackgroundColor3", "Accent")
-        Instance.new("UICorner", AccentBar).CornerRadius = UDim.new(0, 4)
-        local VLbl = Instance.new("TextLabel", Box)
-        VLbl.Name = "ValueLabel"
-        VLbl.Size = UDim2.new(1, -20, 0, 30)
-        VLbl.Position = UDim2.new(0, 15, 0.5, -5)
-        VLbl.BackgroundTransparency = 1
-        VLbl.Text = "..."
-        RegisterTheme(VLbl, "TextColor3", "Text")
-        VLbl.Font = Enum.Font.GothamBlack 
-        VLbl.TextSize = 24 
-        VLbl.TextXAlignment = Enum.TextXAlignment.Left
-        local TLbl = Instance.new("TextLabel", Box)
-        TLbl.Size = UDim2.new(1, -20, 0, 20)
-        TLbl.Position = UDim2.new(0, 15, 0.2, 0)
-        TLbl.BackgroundTransparency = 1
-        TLbl.Text = string.upper(Title)
-        RegisterTheme(TLbl, "TextColor3", "TextDim")
-        TLbl.Font = Enum.Font.GothamBold
-        TLbl.TextSize = 11
-        TLbl.TextXAlignment = Enum.TextXAlignment.Left
-        return VLbl
+    RegisterTheme(AvaStroke, "Color", "Accent"); AvaStroke.Thickness = 2
+
+    -- Greeting Text
+    local hour = tonumber(os.date("%H"))
+    local greeting = "Welcome back,"
+    if hour >= 5 and hour < 12 then greeting = "Good Morning,"
+    elseif hour >= 12 and hour < 18 then greeting = "Good Afternoon,"
+    elseif hour >= 18 then greeting = "Good Evening,"
     end
-    local PingL = CreateStatWidget("Server Ping", "📶")
-    local FPSL = CreateStatWidget("Frames Per Sec", "🖥️")
-    local PlrL = CreateStatWidget("Total Players", "👥")
-    local TimeL = CreateStatWidget("Local Time", "🕒")
-    local GuideFrame = Instance.new("Frame", T_Dash)
-    GuideFrame.Size = UDim2.new(1, 0, 0, 180)
-    GuideFrame.LayoutOrder = 3
-    RegisterTheme(GuideFrame, "BackgroundColor3", "ElementBG") 
-    GuideFrame.BackgroundTransparency = 0.5
-    Instance.new("UICorner", GuideFrame).CornerRadius = UDim.new(0, 8)
-    local GStroke = Instance.new("UIStroke", GuideFrame)
-    RegisterTheme(GStroke, "Color", "Stroke")
-    GStroke.Thickness = 1
-    local GuideHeader = Instance.new("TextLabel", GuideFrame)
-    GuideHeader.Size = UDim2.new(1, -20, 0, 30)
-    GuideHeader.Position = UDim2.new(0, 10, 0, 5)
-    GuideHeader.BackgroundTransparency = 1
-    GuideHeader.Text = "QUICK GUIDE / PANDUAN"
-    RegisterTheme(GuideHeader, "TextColor3", "Accent")
-    GuideHeader.Font = Enum.Font.GothamBlack
-    GuideHeader.TextSize = 13
-    GuideHeader.TextXAlignment = Enum.TextXAlignment.Left
-    local SepLine = Instance.new("Frame", GuideFrame)
-    SepLine.Size = UDim2.new(1, 0, 0, 1)
-    SepLine.Position = UDim2.new(0, 0, 0, 35)
-    RegisterTheme(SepLine, "BackgroundColor3", "Stroke")
-    SepLine.BorderSizePixel = 0
-    local GuideScroll = Instance.new("ScrollingFrame", GuideFrame)
-    GuideScroll.Size = UDim2.new(1, 0, 1, -45)
-    GuideScroll.Position = UDim2.new(0, 0, 0, 40)
-    GuideScroll.BackgroundTransparency = 1
-    GuideScroll.ScrollBarThickness = 2
-    GuideScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local GList = Instance.new("UIListLayout", GuideScroll); GList.Padding = UDim.new(0, 8)
-    local GPad = Instance.new("UIPadding", GuideScroll); GPad.PaddingTop = UDim.new(0,5); GPad.PaddingLeft = UDim.new(0,10)
-    local function AddGuide(feat, desc)
-        local L = Instance.new("TextLabel", GuideScroll)
-        L.Size = UDim2.new(1, -20, 0, 0)
+
+    local WelcomeTitle = Instance.new("TextLabel", ProfileCard)
+    WelcomeTitle.Size = UDim2.new(1, -90, 0, 20)
+    WelcomeTitle.Position = UDim2.new(0, 85, 0, 12)
+    WelcomeTitle.BackgroundTransparency = 1
+    WelcomeTitle.Text = greeting
+    RegisterTheme(WelcomeTitle, "TextColor3", "TextDim")
+    WelcomeTitle.Font = Enum.Font.GothamMedium
+    WelcomeTitle.TextSize = 12
+    WelcomeTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    local DisplayNameLbl = Instance.new("TextLabel", ProfileCard)
+    DisplayNameLbl.Size = UDim2.new(1, -90, 0, 25)
+    DisplayNameLbl.Position = UDim2.new(0, 85, 0, 30)
+    DisplayNameLbl.BackgroundTransparency = 1
+    DisplayNameLbl.Text = LocalPlayer.DisplayName
+    RegisterTheme(DisplayNameLbl, "TextColor3", "Accent")
+    DisplayNameLbl.Font = Enum.Font.GothamBlack
+    DisplayNameLbl.TextSize = 18
+    DisplayNameLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local UsernameLbl = Instance.new("TextLabel", ProfileCard)
+    UsernameLbl.Size = UDim2.new(1, -90, 0, 15)
+    UsernameLbl.Position = UDim2.new(0, 85, 0, 52)
+    UsernameLbl.BackgroundTransparency = 1
+    UsernameLbl.Text = "@" .. LocalPlayer.Name
+    RegisterTheme(UsernameLbl, "TextColor3", "TextDim")
+    UsernameLbl.Font = Enum.Font.Code
+    UsernameLbl.TextSize = 11
+    UsernameLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- [2. GAME INFO & EXECUTOR (Compact)]
+    local GameInfoFrame = Instance.new("Frame", T_Dash)
+    GameInfoFrame.Size = UDim2.new(1, 0, 0, 70)
+    GameInfoFrame.LayoutOrder = 2
+    GameInfoFrame.BackgroundTransparency = 1
+    
+    local GILayout = Instance.new("UIListLayout", GameInfoFrame)
+    GILayout.FillDirection = Enum.FillDirection.Horizontal
+    GILayout.Padding = UDim.new(0, 10)
+
+    -- Left: Game Info
+    local GameBox = Instance.new("Frame", GameInfoFrame)
+    GameBox.Size = UDim2.new(0.65, -5, 1, 0)
+    RegisterTheme(GameBox, "BackgroundColor3", "ElementBG")
+    Instance.new("UICorner", GameBox).CornerRadius = UDim.new(0, 8)
+    
+    local GameIcon = Instance.new("ImageLabel", GameBox)
+    GameIcon.Size = UDim2.new(0, 50, 0, 50)
+    GameIcon.Position = UDim2.new(0, 10, 0, 10)
+    GameIcon.BackgroundTransparency = 1
+    Instance.new("UICorner", GameIcon).CornerRadius = UDim.new(0, 6)
+    pcall(function()
+        GameIcon.Image = "rbxassetid://" .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).IconImageAssetId
+    end)
+
+    local GameTitle = Instance.new("TextLabel", GameBox)
+    GameTitle.Size = UDim2.new(1, -70, 0, 20)
+    GameTitle.Position = UDim2.new(0, 70, 0, 12)
+    GameTitle.BackgroundTransparency = 1
+    GameTitle.Text = (game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown Place")
+    RegisterTheme(GameTitle, "TextColor3", "Text")
+    GameTitle.Font = Enum.Font.GothamBold
+    GameTitle.TextSize = 13
+    GameTitle.TextXAlignment = Enum.TextXAlignment.Left
+    GameTitle.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local ExecName = identifyexecutor and identifyexecutor() or "Unknown"
+    local ExecLbl = Instance.new("TextLabel", GameBox)
+    ExecLbl.Size = UDim2.new(1, -70, 0, 15)
+    ExecLbl.Position = UDim2.new(0, 70, 0, 35)
+    ExecLbl.BackgroundTransparency = 1
+    ExecLbl.Text = "Exec: " .. ExecName
+    RegisterTheme(ExecLbl, "TextColor3", "Accent")
+    ExecLbl.Font = Enum.Font.Code
+    ExecLbl.TextSize = 11
+    ExecLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Right: Account Age
+    local AccBox = Instance.new("Frame", GameInfoFrame)
+    AccBox.Size = UDim2.new(0.35, -5, 1, 0)
+    RegisterTheme(AccBox, "BackgroundColor3", "ElementBG")
+    Instance.new("UICorner", AccBox).CornerRadius = UDim.new(0, 8)
+
+    local AgeTitle = Instance.new("TextLabel", AccBox)
+    AgeTitle.Size = UDim2.new(1, 0, 0, 20)
+    AgeTitle.Position = UDim2.new(0, 0, 0, 15)
+    AgeTitle.BackgroundTransparency = 1
+    AgeTitle.Text = "ACCOUNT AGE"
+    RegisterTheme(AgeTitle, "TextColor3", "TextDim")
+    AgeTitle.Font = Enum.Font.GothamBold
+    AgeTitle.TextSize = 9
+    
+    local AgeVal = Instance.new("TextLabel", AccBox)
+    AgeVal.Size = UDim2.new(1, 0, 0, 20)
+    AgeVal.Position = UDim2.new(0, 0, 0, 35)
+    AgeVal.BackgroundTransparency = 1
+    AgeVal.Text = LocalPlayer.AccountAge .. " Days"
+    RegisterTheme(AgeVal, "TextColor3", "Text")
+    AgeVal.Font = Enum.Font.GothamBlack
+    AgeVal.TextSize = 12
+
+    -- [3. STATS GRID (ICONS VERSION)]
+    local GridFrame = Instance.new("Frame", T_Dash)
+    GridFrame.Size = UDim2.new(1, 0, 0, 140)
+    GridFrame.LayoutOrder = 3
+    GridFrame.BackgroundTransparency = 1
+    
+    local GridLayout = Instance.new("UIGridLayout", GridFrame)
+    GridLayout.CellSize = UDim2.new(0.31, 0, 0, 65) -- Ukuran pas agar muat 3 kesamping
+    GridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+    GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function CreateWidget(Title, IconID)
+        local W = Instance.new("Frame", GridFrame)
+        RegisterTheme(W, "BackgroundColor3", "ElementBG")
+        Instance.new("UICorner", W).CornerRadius = UDim.new(0, 6)
+        
+        -- Icon Image (Ganti Emoji)
+        local I = Instance.new("ImageLabel", W)
+        I.Size = UDim2.new(0, 24, 0, 24)
+        I.Position = UDim2.new(0, 10, 0.5, -12)
+        I.BackgroundTransparency = 1
+        I.Image = IconID
+        RegisterTheme(I, "ImageColor3", "Accent") -- Icon ikut warna tema
+        
+        -- Garis Pemisah Kecil
+        local Sep = Instance.new("Frame", W)
+        Sep.Size = UDim2.new(0, 1, 0.6, 0)
+        Sep.Position = UDim2.new(0, 42, 0.2, 0)
+        Sep.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        Sep.BorderSizePixel = 0
+
+        local T = Instance.new("TextLabel", W)
+        T.Size = UDim2.new(1, -50, 0, 15)
+        T.Position = UDim2.new(0, 50, 0, 12)
+        T.BackgroundTransparency = 1
+        T.Text = Title
+        RegisterTheme(T, "TextColor3", "TextDim")
+        T.Font = Enum.Font.GothamBold
+        T.TextSize = 9
+        T.TextXAlignment = Enum.TextXAlignment.Left
+        
+        local V = Instance.new("TextLabel", W)
+        V.Size = UDim2.new(1, -50, 0, 20)
+        V.Position = UDim2.new(0, 50, 0, 28)
+        V.BackgroundTransparency = 1
+        V.Text = "..."
+        RegisterTheme(V, "TextColor3", "Text")
+        V.Font = Enum.Font.GothamBlack
+        V.TextSize = 13
+        V.TextXAlignment = Enum.TextXAlignment.Left
+        return V
+    end
+
+    Dash_FPS = CreateWidget("FPS", "rbxassetid://10709752906") 
+    Dash_Ping = CreateWidget("PING", "rbxassetid://75471941086926") 
+    Dash_Time = CreateWidget("SERVER TIME", "rbxassetid://10709782497") 
+    Dash_Plr = CreateWidget("PLAYERS", "rbxassetid://10747373176") 
+    Dash_Ram = CreateWidget("MEMORY", "rbxassetid://105856032975609") 
+    Dash_Ver = CreateWidget("VERSION", "rbxassetid://93686373226919")
+    Dash_Ver.Text = "v" .. State.CurrentVersion
+
+    local NewsFrame = Instance.new("Frame", T_Dash)
+    NewsFrame.Size = UDim2.new(1, 0, 0, 120) 
+    NewsFrame.LayoutOrder = 4
+    RegisterTheme(NewsFrame, "BackgroundColor3", "ElementBG")
+    Instance.new("UICorner", NewsFrame).CornerRadius = UDim.new(0, 8)
+    
+    local NewsHeader = Instance.new("Frame", NewsFrame)
+    NewsHeader.Size = UDim2.new(1, 0, 0, 30)
+    NewsHeader.BackgroundTransparency = 1
+    
+    local NewsIcon = Instance.new("ImageLabel", NewsHeader)
+    NewsIcon.Size = UDim2.new(0, 18, 0, 18)
+    NewsIcon.Position = UDim2.new(0, 10, 0.5, -9)
+    NewsIcon.BackgroundTransparency = 1
+    NewsIcon.Image = "rbxassetid://10709773693" -- Icon List/News
+    RegisterTheme(NewsIcon, "ImageColor3", "Accent")
+
+    local NewsTitle = Instance.new("TextLabel", NewsHeader)
+    NewsTitle.Size = UDim2.new(1, -40, 1, 0)
+    NewsTitle.Position = UDim2.new(0, 35, 0, 0)
+    NewsTitle.BackgroundTransparency = 1
+    NewsTitle.Text = "LATEST UPDATES"
+    RegisterTheme(NewsTitle, "TextColor3", "Text")
+    NewsTitle.Font = Enum.Font.GothamBlack
+    NewsTitle.TextSize = 12
+    NewsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Divider = Instance.new("Frame", NewsFrame)
+    Divider.Size = UDim2.new(1, 0, 0, 1)
+    Divider.Position = UDim2.new(0, 0, 0, 30)
+    Divider.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    Divider.BorderSizePixel = 0
+
+    local NewsScroll = Instance.new("ScrollingFrame", NewsFrame)
+    NewsScroll.Size = UDim2.new(1, -20, 1, -40)
+    NewsScroll.Position = UDim2.new(0, 10, 0, 35)
+    NewsScroll.BackgroundTransparency = 1
+    NewsScroll.ScrollBarThickness = 2
+    NewsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    NewsScroll.CanvasSize = UDim2.new(0,0,0,0)
+    local NList = Instance.new("UIListLayout", NewsScroll)
+    NList.Padding = UDim.new(0, 4)
+    
+    local function AddNews(txt)
+        local L = Instance.new("TextLabel", NewsScroll)
+        L.Size = UDim2.new(1, 0, 0, 0)
         L.AutomaticSize = Enum.AutomaticSize.Y
         L.BackgroundTransparency = 1
-        L.RichText = true
-        L.Text = '<font color="rgb(0,255,255)">['..feat..']</font>  ' .. desc
+        L.Text = "• " .. txt
         RegisterTheme(L, "TextColor3", "TextDim")
         L.Font = Enum.Font.GothamMedium
-        L.TextSize = 12
-        L.TextXAlignment = Enum.TextXAlignment.Left
+        L.TextSize = 11
         L.TextWrapped = true
+        L.TextXAlignment = Enum.TextXAlignment.Left
     end
-    AddGuide("Click TP", "Tahan 'Left CTRL' + Klik Mouse untuk teleport cepat.")
-    AddGuide("Menu Key", "Tekan tombol 'R' untuk menyembunyikan/menampilkan menu.")
-    AddGuide("Aimbot", "Tahan Klik Kanan pada musuh untuk mengunci aim.")
-    AddGuide("Themes", "Ganti warna menu di tab Misc > Theme Settings.")
-    AddGuide("Panic", "Gunakan Panic Button di tab Main jika ingin mematikan semua cheat.")
+    
+    AddNews("Remastered Dashboard UI (Grid Layout).")
+    AddNews("Added Real-time System Monitor.")
+    AddNews("Replaced Emojis with Professional Icons.")
+    AddNews("Optimized RTX Graphics Engine.")
+    AddNews("Fixed Animation Bugs & Spectator Mode.")
+
+    -- [GLOBAL UPDATE LOOP DASHBOARD]
     task.spawn(function()
         local RunService = game:GetService("RunService")
+        local Stats = game:GetService("Stats")
         while task.wait(1) do
             if T_Dash.Visible then
-                local ping = 0; pcall(function() ping = math.floor(LocalPlayer:GetNetworkPing() * 2000) end)
-                if ping == 0 then pcall(function() ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end) end
-                PingL.Text = ping .. " ms"
-                FPSL.Text = math.floor(1 / (RunService.RenderStepped:Wait() + 0.001)) .. " FPS" 
-                TimeL.Text = os.date("%H:%M")
-                PlrL.Text = #Players:GetPlayers() .. " / " .. Players.MaxPlayers
-                if ping < 100 then PingL.TextColor3 = Color3.fromRGB(0, 255, 100)
-                elseif ping < 200 then PingL.TextColor3 = Color3.fromRGB(255, 200, 0)
-                else PingL.TextColor3 = Color3.fromRGB(255, 50, 50) end
+                -- Ping
+                local ping = 0
+                pcall(function() ping = math.floor(LocalPlayer:GetNetworkPing() * 2000) end)
+                if ping == 0 then pcall(function() ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end) end
+                
+                -- FPS
+                local fps = math.floor(1 / (RunService.RenderStepped:Wait() + 0.0001))
+                
+                -- RAM
+                local mem = math.floor(Stats:GetTotalMemoryUsageMb())
+
+                -- Update Text
+                if Dash_Ping then Dash_Ping.Text = ping .. " ms" end
+                if Dash_FPS then Dash_FPS.Text = fps .. " FPS" end
+                if Dash_Time then Dash_Time.Text = os.date("%H:%M") end
+                if Dash_Plr then Dash_Plr.Text = #Players:GetPlayers() .. "/" .. Players.MaxPlayers end
+                if Dash_Ram then Dash_Ram.Text = mem .. " MB" end
+
+                -- Indikator Warna Ping
+                if Dash_Ping then
+                    if ping < 100 then Dash_Ping.TextColor3 = Color3.fromRGB(0, 255, 100)
+                    elseif ping < 250 then Dash_Ping.TextColor3 = Color3.fromRGB(255, 200, 50)
+                    else Dash_Ping.TextColor3 = Color3.fromRGB(255, 50, 50) end
+                end
             end
         end
     end)
 end
+-- Jalankan Fungsi Build
 BuildDashboardTab()
 end
 do
@@ -4004,7 +4452,52 @@ do
         if SpecFrame then SpecFrame.Visible = v end
     end)
     local Box_World = CreateSection(T2, "WORLD & OBJECTS")
-    CreateToggle(Box_World, "Night Vision (Thermal)", function(v) State.NightVision = v end)
+    local NVG_Loop = nil
+    local NVG_Effect = nil
+    
+    CreateToggle(Box_World, "Night Vision (NVG Mode)", function(v)
+        State.NightVision = v
+        local Lighting = game:GetService("Lighting")
+        local RunService = game:GetService("RunService")
+
+        if v then
+            ShowToast("NVG Mode: ACTIVATED 🟢")
+            if not NVG_Effect then
+                NVG_Effect = Instance.new("ColorCorrectionEffect")
+                NVG_Effect.Name = "Reyzz_NVG_Filter"
+                NVG_Effect.TintColor = Color3.fromRGB(100, 255, 100)
+                NVG_Effect.Saturation = -1
+                NVG_Effect.Contrast = 0.1 
+                NVG_Effect.Brightness = 0.1
+                NVG_Effect.Parent = Lighting
+            end
+            if NVG_Loop then NVG_Loop:Disconnect() end
+            NVG_Loop = RunService.RenderStepped:Connect(function()
+                Lighting.GlobalShadows = false
+                Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) 
+                Lighting.Ambient = Color3.fromRGB(255, 255, 255) 
+                Lighting.FogEnd = 9e9
+                Lighting.Brightness = 2 
+                if not State.LockTime then
+                    Lighting.ClockTime = 12 
+                end
+            end)
+        else
+            ShowToast("NVG Mode: OFF")
+            if NVG_Loop then 
+                NVG_Loop:Disconnect()
+                NVG_Loop = nil
+            end
+            if NVG_Effect then 
+                NVG_Effect:Destroy()
+                NVG_Effect = nil
+            end
+            Lighting.GlobalShadows = true
+            Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+            Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+            Lighting.Brightness = 1
+        end
+    end)
     CreateToggle(Box_World, "World X-Ray [BETA]", ToggleXRay)
     local Box_Radar = CreateSection(T2, "RADAR & HUD SYSTEM")
     CreateToggle(Box_Radar, "Custom Crosshair (HUD)", function(v) State.Crosshair = v end)
@@ -4013,6 +4506,104 @@ do
     end)
     CreateDropdown(Box_Radar, "Warning Mode", {"All Players", "Enemy Only"}, "All Players", function(v) State.ProximityMode = v end)
     CreateSlider(Box_Radar, "Detect Distance", 10, 200, 50, function(v) State.ProximityDist = v end)
+    -- [PLAYER HIDER SYSTEM V2 (ANTI LOCAL LIMIT)] --
+    local Box_Hide = CreateSection(T2, "PLAYER VISIBILITY (HIDER)")
+    
+    -- Variabel Default
+    State.GlobalHideMode = "None"
+    State.TargetHideName = ""
+
+    -- 1. Dropdown Global
+    CreateDropdown(Box_Hide, "Global Hide Mode", {"None", "Hide All Players", "Hide Enemies", "Hide Teammates"}, "None", function(val)
+        State.GlobalHideMode = val
+        if val == "None" then 
+            ShowToast("Visibility Restored (Waiting Respawn/Update)")
+        else
+            ShowToast("Mode: " .. val)
+        end
+    end)
+
+    function GetPlayerNames()
+        local list = {} 
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then 
+                table.insert(list, p.DisplayName .. " (@" .. p.Name .. ")") 
+            end
+        end
+        return list
+    end
+
+    HideSpecificDrop = CreateDropdown(Box_Hide, "Hide Specific Player", GetPlayerNames(), "Select Player...", function(val)
+        State.TargetHideName = val
+        ShowToast("Target Hiding: " .. val)
+    end)
+
+    CreateButton(Box_Hide, "🔄 Refresh Player List", function()
+        if HideSpecificDrop and HideSpecificDrop.Refresh then
+            HideSpecificDrop:Refresh(GetPlayerNames())
+        end
+        ShowToast("List Updated with Usernames!")
+    end)
+
+    CreateButton(Box_Hide, "👁️ Force Un-Hide All", function()
+        State.GlobalHideMode = "None"
+        State.TargetHideName = ""
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character then
+                for _, v in pairs(p.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        -- FIX: Jangan munculkan HumanoidRootPart (Kotak Inti)
+                        if v.Name == "HumanoidRootPart" then
+                            v.Transparency = 1 
+                        else
+                            v.Transparency = 0
+                        end
+                    elseif v:IsA("Decal") then
+                        v.Transparency = 0
+                    elseif v:IsA("Accessory") and v:FindFirstChild("Handle") then
+                        v.Handle.Transparency = 0
+                    end
+                end
+                -- Munculkan Nama Kembali
+                local hum = p.Character:FindFirstChild("Humanoid")
+                if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer end
+            end
+        end
+        ShowToast("All Players Visible (Normal)!")
+    end)
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if State.GlobalHideMode == "None" and State.TargetHideName == "" then return end
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local shouldHide = false 
+                if State.GlobalHideMode == "Hide All Players" then
+                    shouldHide = true
+                elseif State.GlobalHideMode == "Hide Enemies" and p.Team ~= LocalPlayer.Team then
+                    shouldHide = true
+                elseif State.GlobalHideMode == "Hide Teammates" and p.Team == LocalPlayer.Team then
+                    shouldHide = true
+                end
+                if State.TargetHideName ~= "" then
+                    local pID = p.DisplayName .. " (@" .. p.Name .. ")"
+                    if pID == State.TargetHideName then
+                        shouldHide = true
+                    end
+                end
+                if shouldHide then
+                    for _, v in pairs(p.Character:GetChildren()) do
+                        if v:IsA("BasePart") or v:IsA("Decal") then
+                            v.Transparency = 1 
+                        elseif v:IsA("Accessory") and v:FindFirstChild("Handle") then
+                            v.Handle.Transparency = 1
+                        end
+                    end
+                    local hum = p.Character:FindFirstChild("Humanoid")
+                    if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+                end
+            end
+        end
+    end)
 end
 do
     local Box_Tools = CreateSection(T3, "CAMERA TOOLS")
@@ -4065,7 +4656,7 @@ do
     end)
     State.UIListeners["LockFOV"] = State.UIListeners["🔒 Lock FOV (Loop)"]
     local Box_Stab = CreateSection(T3, "STABILIZATION")
-    CreateToggle(Box_Stab, "🚫 No Bobbing (Anti-Goyang)", function(v)
+    CreateToggle(Box_Stab, "No Bobbing (Anti-Goyang)", function(v)
         State.NoShake = v
         if v then
             ShowToast("Anti-Goyang: ON (Forced)")
@@ -4127,7 +4718,7 @@ do
     end)
     CreateInput(Box_Server, "Join Job ID", "Paste ID Here", function(id) State.TargetJobId = id end, true)
     CreateButton(Box_Server, "Join by Job ID", JoinJobId)
-    local Box_Finder = CreateSection(T4, "PLAYER FINDER & SPECTATE")
+    local Box_Finder = CreateSection(T4, "PLAYER TELEPORT & SPECTATE")
     CreateButton(Box_Finder, "Stop Spectating / Reset Cam", function()
         State.SpectatingPlayer = nil
         State.CinematicCamera = false 
@@ -4164,17 +4755,22 @@ do
     TPPadding.PaddingRight = UDim.new(0, 5)
     TPPadding.PaddingBottom = UDim.new(0, 5)
     RefreshList = function()
+        -- Bersihkan list lama
         for _,v in pairs(TPList:GetChildren()) do 
             if v:IsA("Frame") then v:Destroy() end 
         end
+
         for _,p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 local pName = string.lower(p.DisplayName) 
                 local pReal = string.lower(p.Name)
+                
+                -- Filter Pencarian
                 if CurrentSearch == "" or string.find(pName, CurrentSearch) or string.find(pReal, CurrentSearch) then
                     local Row = Instance.new("Frame", TPList)
                     Row.Size = UDim2.new(1, 0, 0, 35)
                     Row.BackgroundTransparency = 1
+                    
                     local TPBtn = Instance.new("TextButton", Row)
                     TPBtn.Size = UDim2.new(0.6, -5, 1, 0)
                     RegisterTheme(TPBtn, "BackgroundColor3", "ElementBG")
@@ -4183,6 +4779,7 @@ do
                     TPBtn.Font = Enum.Font.GothamMedium
                     TPBtn.TextSize = 12
                     Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 6)
+                    
                     local ViewBtn = Instance.new("TextButton", Row)
                     ViewBtn.Size = UDim2.new(0.4, -5, 1, 0)
                     ViewBtn.Position = UDim2.new(0.6, 5, 0, 0)
@@ -4192,93 +4789,88 @@ do
                     ViewBtn.Font = Enum.Font.GothamBold
                     ViewBtn.TextSize = 11
                     Instance.new("UICorner", ViewBtn).CornerRadius = UDim.new(0, 6)
+
+                    -- [[ LOGIKA TELEPORT BARU (ANTI VOID) ]] --
                     TPBtn.MouseButton1Click:Connect(function() 
-                    -- Ambil posisi target (Jika player jauh, kita coba cari posisi terakhir yang diketahui atau minta server)
-                    local targetPos = nil
-                    if p.Character and p.Character:GetPivot() then
-                        targetPos = p.Character:GetPivot().Position
-                    end
-
-                    if targetPos then
-                        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            ShowToast("⏳ Force Teleporting... (Tahan 2dtk)")
-                            
-                            -- 1. Minta server mengirim map di lokasi target
-                            task.spawn(function()
-                                pcall(function() LocalPlayer:RequestStreamAroundAsync(targetPos) end)
-                            end)
-
-                            -- 2. LOOPING TELEPORT (Ini trik Auto Follow-nya)
-                            -- Kita kunci posisi karakter di target selama 1.5 detik agar tidak jatuh ke void
-                            local StartTime = tick()
-                            local Connection
-                            Connection = game:GetService("RunService").Stepped:Connect(function()
-                                if tick() - StartTime > 1.5 then -- Berhenti setelah 1.5 detik
-                                    Connection:Disconnect()
-                                    ShowToast("✅ Teleport Selesai!")
-                                else
-                                    -- Terus menerus set posisi (maksa)
-                                    root.CFrame = CFrame.new(targetPos + Vector3.new(0, 5, 0))
-                                    root.Velocity = Vector3.new(0,0,0) -- Matikan velocity biar ga mental
-                                end
-                            end)
+                        local targetPos = nil
+                        
+                        -- Coba ambil posisi (GetPivot lebih kuat drpd cari Part)
+                        if p.Character then 
+                            targetPos = p.Character:GetPivot().Position
                         end
-                    else
-                        ShowToast("❌ Gagal: Lokasi Player Tidak Diketahui (Terlalu Jauh)")
-                    end
-                end)
+
+                        if targetPos then
+                            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                ShowToast("⏳ Requesting Map Chunk...")
+                                
+                                -- 1. Paksa Server Render Area Sana Dulu
+                                LocalPlayer:RequestStreamAroundAsync(targetPos)
+                                
+                                -- 2. Teleport Loop (Biar gak jatuh ke void)
+                                local StartTime = tick()
+                                local Connection
+                                Connection = game:GetService("RunService").Stepped:Connect(function()
+                                    -- Teleport paksa selama 1.5 detik sampai map loading
+                                    if tick() - StartTime > 1.5 then
+                                        Connection:Disconnect()
+                                        ShowToast("✅ Teleport Success!")
+                                    else
+                                        root.CFrame = CFrame.new(targetPos + Vector3.new(0, 5, 0))
+                                        root.Velocity = Vector3.new(0,0,0)
+                                    end
+                                end)
+                            end
+                        else
+                            ShowToast("❌ Gagal: Player Terlalu Jauh / Tidak Ter-Render")
+                        end
+                    end)
+
                     ViewBtn.MouseButton1Click:Connect(function() 
-                    local targetPos = nil
-                    if p.Character and p.Character:GetPivot() then
-                        targetPos = p.Character:GetPivot().Position
-                    end
+                        local targetPos = nil
+                        if p.Character then targetPos = p.Character:GetPivot().Position end
 
-                    if targetPos then
-                        State.SpectatingPlayer = p
-                        ShowToast("👁️ Memuat Area Spectator... (Tunggu)")
+                        if targetPos then
+                            State.SpectatingPlayer = p
+                            ShowToast("👁️ Spectating: " .. p.DisplayName)
+                            LocalPlayer.ReplicationFocus = p.Character.PrimaryPart or p.Character:FindFirstChild("Head")
 
-                        -- 1. Lepaskan Kamera dari karakter kita & pindahkan ke lokasi target
-                        Camera.CameraType = Enum.CameraType.Scriptable
-                        Camera.CFrame = CFrame.new(targetPos + Vector3.new(0, 20, 0), targetPos)
-
-                        -- 2. Minta server memuat area tersebut
-                        task.spawn(function()
-                            pcall(function() LocalPlayer:RequestStreamAroundAsync(targetPos) end)
-                        end)
-
-                        -- 3. Loop Check: Tunggu sampai karakter musuh benar-benar muncul
-                        task.spawn(function()
-                            local MaxWait = 20 -- Batas waktu 2 detik (20 x 0.1)
-                            local Found = false
+                            Camera.CameraType = Enum.CameraType.Scriptable
+                            Camera.CFrame = CFrame.new(targetPos + Vector3.new(0, 10, 0), targetPos)
                             
-                            for i = 1, MaxWait do
-                                -- Cek apakah karakter dan humanoid musuh sudah ter-render
-                                if p.Character and p.Character:FindFirstChild("Humanoid") and p.Character:FindFirstChild("HumanoidRootPart") then
-                                    Camera.CameraType = Enum.CameraType.Custom
-                                    Camera.CameraSubject = p.Character.Humanoid
-                                    ShowToast("✅ Spectating: " .. p.DisplayName)
-                                    Found = true
-                                    break
-                                else
-                                    -- Kalau belum ada, paksa request lagi
-                                    pcall(function() LocalPlayer:RequestStreamAroundAsync(targetPos) end)
+                            task.spawn(function()
+                                -- Paksa load area
+                                LocalPlayer:RequestStreamAroundAsync(targetPos)
+                                task.wait(0.5)
+                                local MaxWait = 20 
+                                local Found = false
+                                
+                                for i = 1, MaxWait do
+                                    if p.Character and p.Character:FindFirstChild("Humanoid") then
+                                        Camera.CameraType = Enum.CameraType.Custom
+                                        Camera.CameraSubject = p.Character.Humanoid
+                                        -- Pastikan fokus tetap di musuh
+                                        LocalPlayer.ReplicationFocus = p.Character.PrimaryPart
+                                        Found = true
+                                        break
+                                    else
+                                        LocalPlayer:RequestStreamAroundAsync(targetPos)
+                                    end
+                                    task.wait(0.2)
                                 end
-                                task.wait(0.1)
-                            end
 
-                            if not Found then
-                                ShowToast("⚠️ Gagal memuat karakter (Jarak Jauh)")
-                                Camera.CameraType = Enum.CameraType.Custom
-                                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                                    Camera.CameraSubject = LocalPlayer.Character.Humanoid
+                                if not Found then
+                                    ShowToast("⚠️ Gagal Load Karakter (Kejauhan)")
+                                    -- Reset Fokus ke diri sendiri biar ga ngebug
+                                    LocalPlayer.ReplicationFocus = LocalPlayer.Character and LocalPlayer.Character.PrimaryPart
+                                    Camera.CameraType = Enum.CameraType.Custom
+                                    if LocalPlayer.Character then Camera.CameraSubject = LocalPlayer.Character.Humanoid end
                                 end
-                            end
-                        end)
-                    else 
-                        ShowToast("❌ Gagal: Player Terlalu Jauh/Tidak Terdeteksi") 
-                    end 
-                end)
+                            end)
+                        else 
+                            ShowToast("❌ Player Tidak Ditemukan (Out of Range)") 
+                        end 
+                    end)
                 end
             end
         end
@@ -4363,15 +4955,38 @@ do
     local Box_Atmo = CreateSection(T5, "ATMOSPHERE & VISUALS")
     CreateToggle(Box_Atmo, "Fullbright Loop (No Darkness)", function(v) State.FullbrightLoop = v end)
     CreateToggle(Box_Atmo, "Remove Fog (Clear View)", function(v) State.NoFog = v end)
-    CreateToggle(Box_Atmo, "Disable FX (Anti-Silau)", false, function(val)
+    CreateToggle(Box_Atmo, "Disable FX (Anti-Silau Max)", false, function(val)
         State.DisableLighting = val
-        if not val then
-            for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
-                if v:IsA("PostEffect") or v:IsA("Atmosphere") then
+        local Lighting = game:GetService("Lighting")
+        if val then
+            ShowToast("💡 Anti-Silau: ON (Removing Glare...)")
+            for _, v in pairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
                     v.Enabled = true
                 end
             end
-            game:GetService("Lighting").GlobalShadows = true
+            
+            Lighting.GlobalShadows = false  
+            Lighting.ClockTime = 12 
+            Lighting.ExposureCompensation = 0 
+            Lighting.EnvironmentDiffuseScale = 0
+            Lighting.EnvironmentSpecularScale = 0
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128) 
+            Lighting.Ambient = Color3.fromRGB(128, 128, 128)
+            
+        else
+            ShowToast("💡 Anti-Silau: OFF (Restoring...)")
+            
+            Lighting.GlobalShadows = true
+            Lighting.Brightness = 1
+            Lighting.ExposureCompensation = 0
+            Lighting.EnvironmentDiffuseScale = 1 
+            Lighting.EnvironmentSpecularScale = 1
+            for _, v in pairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
+                    v.Enabled = true
+                end
+            end
         end
     end)
     CreateToggle(Box_Atmo, "Remove Particles", function(v) State.NoParticles = v end)
@@ -4379,7 +4994,25 @@ do
     CreateToggle(Box_Phys, "Walk on Water (Jesus)", function(v) State.WalkOnWater = v end) 
     CreateToggle(Box_Phys, "Gravity Control (Magnet)", function(v) State.GravityControl = v end)
     local Box_Opt = CreateSection(T5, "MAP OPTIMIZATION (FPS)")
-    CreateButton(Box_Opt, "🚀 Boost FPS (Safe Mode)", BoostFPS)
+    CreateInput(Box_Opt, "⏱️ Loop Interval (Menit)", "1", function(val)
+        local num = tonumber(val)
+        if num and num > 0 then
+            State.FPSInterval = num
+            ShowToast("Interval set: " .. num .. " Menit")
+        else
+            ShowToast("Masukkan angka valid!")
+        end
+    end, false) 
+    CreateToggle(Box_Opt, "Auto Boost Loop", function(v)
+        State.FPSLoop = v
+        if v then 
+            ShowToast("Auto Boost: ON (Tiap " .. State.FPSInterval .. " Menit)")
+            SuperBoostFPS()
+        else 
+            ShowToast("Auto Boost: OFF") 
+        end
+    end)
+    CreateButton(Box_Opt, "⚡ Extreme Boost", SuperBoostFPS)
     CreateButton(Box_Opt, "🔥 Delete Map (Extreme FPS)", DeleteMap)
     CreateButton(Box_Opt, "🎨 Remove Textures (Anti-Lag)", RemoveTextures)
     CreateButton(Box_Opt, "🧹 Clear Debris (Trash Cleaner)", function()
@@ -4400,6 +5033,169 @@ do
     CreateToggle(Box_Util, "Anti-Void (Return Safe)", function(v) State.AntiVoid = v end) 
     CreateInput(Box_Util, "Void Height (Y)", -50, function(v) State.VoidHeight = v end) 
     CreateToggle(Box_Util, "Show Server Stats UI", function(v) State.ShowStats = v; StatsFrame.Visible = v end)
+    local Box_RTX = CreateSection(T5, "RTX GRAPHICS ENGINE (UE5)")
+    -- Variabel Global (Biar gak kena limit)
+    RTX_Loop = nil
+    RTX_Effects = {} 
+    function ClearRTX()
+        if RTX_Loop then RTX_Loop:Disconnect() RTX_Loop = nil end
+        local Lighting = game:GetService("Lighting")
+        if RTX_Effects then
+            for _, v in pairs(RTX_Effects) do
+                if v and v.Parent then v:Destroy() end
+            end
+        end
+        RTX_Effects = {}
+        Lighting.GlobalShadows = true
+        Lighting.Brightness = 1
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        Lighting.ExposureCompensation = 0
+        ShowToast("RTX OFF: Graphics Restored")
+    end
+    -- Fungsi Utama RTX (V3 - With Realistic Atmosphere)
+    function ActivateRTX(Mode)
+        ClearRTX() -- Reset dulu biar bersih
+        task.wait(0.1)
+        
+        local Lighting = game:GetService("Lighting")
+        ShowToast("🚀 Loading Graphics: " .. Mode)
+
+        -- 1. BUAT EFEK VISUAL BASIC
+        local CC = Instance.new("ColorCorrectionEffect", Lighting)
+        CC.Name = "RTX_CC"
+        table.insert(RTX_Effects, CC)
+
+        local Bloom = Instance.new("BloomEffect", Lighting)
+        Bloom.Name = "RTX_Bloom"
+        table.insert(RTX_Effects, Bloom)
+
+        local Sun = Instance.new("SunRaysEffect", Lighting)
+        Sun.Name = "RTX_Sun"
+        table.insert(RTX_Effects, Sun)
+        
+        -- Kita pasang Atmosphere di SEMUA mode biar gak "No Fog"
+        local Atmo = Instance.new("Atmosphere", Lighting)
+        Atmo.Name = "RTX_Atmo"
+        table.insert(RTX_Effects, Atmo)
+
+        local Blur = nil
+        if Mode == "Ultra (UE5)" then
+            Blur = Instance.new("DepthOfFieldEffect", Lighting)
+            Blur.Name = "RTX_Blur"
+            table.insert(RTX_Effects, Blur)
+        end
+
+        -- 2. TENTUKAN SETTINGAN (ATMOSFERA DIATUR DISINI)
+        local Settings = {}
+        
+        if Mode == "Low (Vibrant)" then
+            -- Grafik Terang & Berwarna (Kabut Tipis)
+            Settings.Brightness = 2
+            Settings.Shadows = true
+            Settings.Specular = 0.3
+            Settings.Diffuse = 0.5
+            Settings.Ambient = Color3.fromRGB(150, 150, 150)
+            
+            -- Efek
+            CC.Saturation = 0.3; CC.Contrast = 0.1
+            Bloom.Intensity = 0.2; Bloom.Size = 24
+            Sun.Intensity = 0.1
+            
+            -- Atmosfer (Fog Tipis tapi Ada)
+            Atmo.Density = 0.25      -- Ketebalan udara
+            Atmo.Offset = 0          -- Pantulan langit
+            Atmo.Haze = 1            -- Kabut panas
+            Atmo.Glare = 0.2         -- Silau matahari
+            Atmo.Color = Color3.fromRGB(190, 190, 190)
+            Atmo.Decay = Color3.fromRGB(100, 100, 100)
+            
+            -- Fog Klasik (Backup)
+            Lighting.FogStart = 50
+            Lighting.FogEnd = 5000 
+
+        elseif Mode == "Medium (Shadows)" then
+            -- Grafik Seimbang (Kabut Realistis)
+            Settings.Brightness = 2.5
+            Settings.Shadows = true
+            Settings.Specular = 1 
+            Settings.Diffuse = 1
+            Settings.Ambient = Color3.fromRGB(80, 80, 80)
+            
+            -- Efek
+            CC.Saturation = 0.2; CC.Contrast = 0.2
+            Bloom.Intensity = 0.4; Bloom.Size = 30
+            Sun.Intensity = 0.25; Sun.Spread = 0.6
+            
+            -- Atmosfer (Lebih Tebal)
+            Atmo.Density = 0.35
+            Atmo.Offset = 0.25
+            Atmo.Haze = 2
+            Atmo.Glare = 0.5
+            Atmo.Color = Color3.fromRGB(200, 170, 140) -- Agak oranye (Sore)
+            Atmo.Decay = Color3.fromRGB(90, 80, 70)
+            
+            -- Fog Klasik
+            Lighting.FogStart = 20
+            Lighting.FogEnd = 2500 
+
+        elseif Mode == "Ultra (UE5)" then
+            -- Grafik Berat (Volumetric Fog / Tebal & Cinematic)
+            Settings.Brightness = 3
+            Settings.Shadows = true
+            Settings.Specular = 1 -- Refleksi Maksimal
+            Settings.Diffuse = 1
+            Settings.Ambient = Color3.fromRGB(30, 30, 30) -- Shadow Gelap
+            
+            -- Efek
+            CC.Saturation = 0; CC.Contrast = 0.5 -- Warna agak pudar tapi kontras tinggi (Realistis)
+            Bloom.Intensity = 0.6; Bloom.Size = 40; Bloom.Threshold = 0.8
+            Sun.Intensity = 0.5; Sun.Spread = 0.3
+            
+            if Blur then 
+                Blur.FocusDistance = 30; Blur.InFocusRadius = 40; Blur.NearIntensity = 0; Blur.FarIntensity = 0.5 
+            end
+            
+            -- Atmosfer (UE5 Style - Tebal & Menyatu dengan cahaya)
+            Atmo.Density = 0.45      -- Udara tebal (efek volume)
+            Atmo.Offset = 0.5        -- Cahaya nyebar lebih luas
+            Atmo.Haze = 3            -- Efek fatamorgana/panas
+            Atmo.Glare = 0.7         -- Matahari menyilaukan
+            Atmo.Color = Color3.fromRGB(255, 220, 180) -- Warna Golden Hour
+            Atmo.Decay = Color3.fromRGB(50, 40, 40)    -- Warna kejauhan gelap
+            
+            -- Fog Klasik (Jarak pandang terbatas biar kayak film)
+            Lighting.FogStart = 10
+            Lighting.FogEnd = 1500 
+        end
+
+        -- 3. LOOPING FORCER
+        local RunService = game:GetService("RunService")
+        RTX_Loop = RunService.RenderStepped:Connect(function()
+            Lighting.GlobalShadows = Settings.Shadows
+            Lighting.Brightness = Settings.Brightness
+            Lighting.EnvironmentSpecularScale = Settings.Specular
+            Lighting.EnvironmentDiffuseScale = Settings.Diffuse
+            Lighting.OutdoorAmbient = Settings.Ambient
+            
+            -- Kunci Jam ke Sore (Golden Hour) biar Atmosfernya Kelihatan Bagus
+            if not State.LockTime then 
+                Lighting.ClockTime = 17.2 -- Jam 5 sore lewat dikit (Warna oranye langit keluar)
+            end
+        end)
+    end
+
+    local Modes = {"OFF", "Low (Vibrant)", "Medium (Shadows)", "Ultra (UE5)"}
+    CreateDropdown(Box_RTX, "Select Graphics Mode", Modes, "OFF", function(val)
+        if val == "OFF" then
+            ClearRTX()
+        else
+            ActivateRTX(val)
+        end
+    end)
+    CreateLabel(Box_RTX, "Tip: Pilih 'Ultra' untuk grafik refleksi air & lantai maksimal (Seperti Ray Tracing).")
     do
         local App = {
             Picking = false,
@@ -4608,32 +5404,9 @@ do
     end)
 end
 do
-    local R15_Anims = {
-        ["Ghost Floating"] = "112082806790047",
-        ["Sturdy NYC Dance"] = "140333103929828",
-        ["Sturdy Dance Speed"] = "102571052202995",
-        ["Metro Man (Super)"] = "71043409187026",
-        ["Pumpkin Float"] = "101988298323707",
-        ["Zombie Idle"] = "616158929",
-        ["Levitation"] = "132783162476851",
-        ["Knight Idle"] = "657564596",
-        ["Sit on Cloud"] = "70673082198328",
-        ["Popular Dance"] = "93062298566806",
-        ["Jomok Dance"] = "118364690209655",
-        ["Head Throw"] = "138243322520289",
-        ["Rusdi Emote"] = "126780665379004",
-        ["WHAT THE HELL"] = "78086740525202",
-    }
-    local R6_Anims = {
-        ["R6 Dance 1"] = "507771955",
-        ["R6 Dance 2"] = "507776043",
-        ["R6 Dance 3"] = "507777268",
-        ["R6 Thriller"] = "99835792883875",
-        ["R6 Metro Man"] = "80552139463944",
-        ["R6 Kyoufuu"] = "137322894494527",
-        ["R6 Zombie"] = "120353238054872",
-        ["R6 Jomok Dance"] = "131720136455849",
-    }
+    local AnimURL = "https://reyzzhub.netlify.app/api/anmc1"
+    local R15_Anims = {}
+    local R6_Anims = {}
     local function UpdateAnimation(val)
         if State.AnimFixLoop then 
             State.AnimFixLoop:Disconnect(); State.AnimFixLoop = nil
@@ -4753,15 +5526,22 @@ do
             end
         end 
     end)
-    local R15Keys = {}; for k,v in pairs(R15_Anims) do table.insert(R15Keys, k) end; table.sort(R15Keys)
-    CreateDropdown(Box_Anim, "R15 Animations", R15Keys, "Select...", function(name)
+    local DropR15, DropR6 
+    local function GetSortedKeys(dict)
+        local keys = {}
+        for k, _ in pairs(dict) do table.insert(keys, k) end
+        table.sort(keys)
+        return keys
+    end
+
+    DropR15 = CreateDropdown(Box_Anim, "R15 Animations", GetSortedKeys(R15_Anims), "Select...", function(name)
         if State.AnimRigType == "R15" then 
             State.CurrentAnimID = R15_Anims[name]
             if State.AnimChanger then UpdateAnimation(State.CurrentAnimID) end 
         else ShowToast("❌ Error: You are R6!") end
     end)
-    local R6Keys = {}; for k,v in pairs(R6_Anims) do table.insert(R6Keys, k) end; table.sort(R6Keys)
-    CreateDropdown(Box_Anim, "R6 Animations", R6Keys, "Select...", function(name)
+
+    DropR6 = CreateDropdown(Box_Anim, "R6 Animations", GetSortedKeys(R6_Anims), "Select...", function(name)
         if State.AnimRigType == "R6" then 
             State.CurrentAnimID = R6_Anims[name]
             if State.AnimChanger then UpdateAnimation(State.CurrentAnimID) end 
@@ -4788,6 +5568,53 @@ do
             ShowToast("Anim Reset")
         end
     end)
+    -- [[ CLOUD ANIMATION UPDATER SYSTEM ]] --
+    task.spawn(function()
+    local HttpService = game:GetService("HttpService")
+    
+    local function FetchAnimations()
+        local success, result = pcall(function()
+            -- Trik ?t=tick() ini MEMAKSA Netlify & Roblox mengambil data terbaru
+            -- Ini mengatasi masalah cache yang kamu khawatirkan.
+            return game:HttpGet(AnimURL .. "?t=" .. math.floor(tick())) 
+        end)
+
+        if success and result then
+            local decoded = nil
+            local decodeSuccess, err = pcall(function()
+                decoded = HttpService:JSONDecode(result)
+            end)
+
+            if decodeSuccess and decoded then
+                if decoded.animations then
+                    if decoded.animations.R15 then 
+                        R15_Anims = decoded.animations.R15 
+                    end
+                
+                    if decoded.animations.R6 then 
+                        R6_Anims = decoded.animations.R6 
+                    end
+                    if DropR15 and DropR15.Refresh then
+                        DropR15:Refresh(GetSortedKeys(R15_Anims))
+                    end
+                    if DropR6 and DropR6.Refresh then
+                        DropR6:Refresh(GetSortedKeys(R6_Anims))
+                    end
+                end
+            else
+                warn("⚠️ Gagal Decode JSON: " .. tostring(err))
+            end
+        else
+            warn("⚠️ Gagal Fetch URL: " .. tostring(result))
+        end
+    end
+    FetchAnimations()
+    while task.wait(10) do
+        FetchAnimations()
+    end
+end)
+
+
     local Box_Time = CreateSection(T6, "TIME & ENVIRONMENT")
     CreateToggle(Box_Time, "Loop Time (Freeze Day)", function(v) 
         State.LockTime = v
@@ -4923,19 +5750,17 @@ do
             UpdateMobileJump() -- Restart loop saat ditoggle
         end, true)
 
-        CreateSlider(Box_Mobile, "Posisi X (Kiri-Kanan)", 0, 100, (UP_Config.JumpX or 0.8)*100, function(v)
+        CreateSlider(Box_Mobile, "Posisi X (Kiri-Kanan)", 0, 300, (UP_Config.JumpX or 0.8)*100, function(v)
             UP_Config.JumpX = v / 100
             SaveUPConfig()
-            -- Tidak perlu panggil UpdateMobileJump() disini karena loop sudah jalan otomatis membaca Config
-            -- Tapi kalau mau dipanggil juga tidak masalah.
         end)
         
-        CreateSlider(Box_Mobile, "Posisi Y (Atas-Bawah)", 0, 100, (UP_Config.JumpY or 0.8)*100, function(v)
+        CreateSlider(Box_Mobile, "Posisi Y (Atas-Bawah)", 0, 300, (UP_Config.JumpY or 0.8)*100, function(v)
             UP_Config.JumpY = v / 100
             SaveUPConfig()
         end)
         
-        CreateSlider(Box_Mobile, "Ukuran Tombol", 50, 200, (UP_Config.JumpSize or 1)*100, function(v)
+        CreateSlider(Box_Mobile, "Ukuran Tombol", 50, 700, (UP_Config.JumpSize or 1)*100, function(v)
             UP_Config.JumpSize = v / 100
             SaveUPConfig()
         end)
@@ -4944,6 +5769,249 @@ end
 local AboutTitle = Instance.new("TextLabel", T7); AboutTitle.Text = "Reyzzarjam BloxHub Dynamic"; AboutTitle.Size = UDim2.new(1, 0, 0, 40); AboutTitle.BackgroundTransparency = 1; RegisterTheme(AboutTitle, "TextColor3", "Accent"); AboutTitle.Font = Enum.Font.GothamBlack; AboutTitle.TextSize = 28; AboutTitle.TextXAlignment = Enum.TextXAlignment.Center
 local AboutDesc = Instance.new("TextLabel", T7); AboutDesc.Text = "If You Find Bug Please Report On My Discord\nSuggest Game For More Feature\nNeed Suggest More Featured\n\n\nCopyright © Reyzzarjam 2025"; AboutDesc.Size = UDim2.new(1, 0, 0, 60); AboutDesc.BackgroundTransparency = 1; RegisterTheme(AboutDesc, "TextColor3", "TextDim"); AboutDesc.Font = Enum.Font.Gotham; AboutDesc.TextSize = 14
 local DiscordBtn = CreateButton(T7, "Copy Discord Link", function() setclipboard("https://discord.gg/fnU7ebtGq8"); ShowToast("Discord Link Copied!") end); DiscordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); DiscordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+
+-- 1. BAGIAN LIST FITUR AKTIF
+Box_Status_Active = CreateSection(T_Status, "ACTIVE FEATURES LIST")
+
+-- Wadah Scrolling untuk List
+Status_ActiveScroll = Instance.new("ScrollingFrame", Box_Status_Active)
+Status_ActiveScroll.Name = "ActiveScroll"
+Status_ActiveScroll.Size = UDim2.new(1, -10, 0, 150)
+Status_ActiveScroll.Position = UDim2.new(0, 5, 0, 0)
+Status_ActiveScroll.BackgroundTransparency = 1
+Status_ActiveScroll.ScrollBarThickness = 3
+Status_ActiveScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Status_ActiveScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Status_ActiveLayout = Instance.new("UIListLayout", Status_ActiveScroll)
+Status_ActiveLayout.SortOrder = Enum.SortOrder.LayoutOrder
+Status_ActiveLayout.Padding = UDim.new(0, 4)
+task.spawn(function()
+    task.wait(0.5)
+    if PendingActiveFeatures then
+        for name, _ in pairs(PendingActiveFeatures) do
+            UpdateActiveIndicator(name, true)
+        end
+        PendingActiveFeatures = {} 
+    end
+end)
+Box_Status_Error = CreateSection(T_Status, "ERROR LOGS (DEBUG)")
+
+-- Wadah Scrolling untuk Error
+Status_ErrorScroll = Instance.new("ScrollingFrame", Box_Status_Error)
+Status_ErrorScroll.Name = "ErrorScroll"
+Status_ErrorScroll.Size = UDim2.new(1, -10, 0, 150)
+Status_ErrorScroll.Position = UDim2.new(0, 5, 0, 0)
+Status_ErrorScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 20) -- Background Gelap
+Status_ErrorScroll.BackgroundTransparency = 0.5
+Instance.new("UICorner", Status_ErrorScroll).CornerRadius = UDim.new(0, 6)
+Status_ErrorScroll.ScrollBarThickness = 3
+Status_ErrorScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Status_ErrorScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+-- Layout Error
+local Status_ErrorLayout = Instance.new("UIListLayout", Status_ErrorScroll)
+Status_ErrorLayout.Padding = UDim.new(0, 2)
+local ErrorPad = Instance.new("UIPadding", Status_ErrorScroll)
+ErrorPad.PaddingLeft = UDim.new(0, 5)
+ErrorPad.PaddingTop = UDim.new(0, 5)
+
+-- Tombol Bersihkan Error
+CreateButton(Box_Status_Error, "🧹 Clear Error Logs", function()
+    for _, v in pairs(Status_ErrorScroll:GetChildren()) do
+        if v:IsA("TextLabel") then v:Destroy() end
+    end
+    ShowToast("Error Logs Cleared")
+end)
+
+------------------------------------------------------------------------
+-- [LOGIKA GLOBAL PENGGERAK UI STATUS]
+------------------------------------------------------------------------
+
+-- Fungsi Update Indikator (Versi Tab)
+-- Kita buat Global agar bisa dipanggil dari CreateToggle
+function UpdateActiveIndicator(FeatureName, IsActive)
+    -- Cek apakah Tab Status sudah dibuat
+    if not Status_ActiveScroll then return end
+
+    local existing = Status_ActiveScroll:FindFirstChild("IND_" .. FeatureName)
+    
+    if IsActive then
+        if not existing then
+            local Row = Instance.new("Frame", Status_ActiveScroll)
+            Row.Name = "IND_" .. FeatureName
+            Row.Size = UDim2.new(1, -5, 0, 25)
+            Row.BackgroundTransparency = 1
+            
+            -- Ikon Dot Hijau Glowing
+            local Dot = Instance.new("Frame", Row)
+            Dot.Size = UDim2.new(0, 8, 0, 8)
+            Dot.Position = UDim2.new(0, 5, 0.5, -4)
+            Dot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+            Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
+            
+            local Glow = Instance.new("UIStroke", Dot)
+            Glow.Color = Color3.fromRGB(0, 255, 100)
+            Glow.Thickness = 2
+            Glow.Transparency = 0.5
+            
+            -- Teks Nama Fitur
+            local Lbl = Instance.new("TextLabel", Row)
+            Lbl.Size = UDim2.new(1, -25, 1, 0)
+            Lbl.Position = UDim2.new(0, 20, 0, 0)
+            Lbl.BackgroundTransparency = 1
+            Lbl.Text = FeatureName
+            -- Pake warna tema kalau bisa
+            if CurrentTheme then 
+                Lbl.TextColor3 = CurrentTheme.Text 
+            else
+                Lbl.TextColor3 = Color3.fromRGB(255,255,255)
+            end
+            Lbl.Font = Enum.Font.GothamBold
+            Lbl.TextSize = 12
+            Lbl.TextXAlignment = Enum.TextXAlignment.Left
+        end
+    else
+        if existing then
+            existing:Destroy()
+        end
+    end
+end
+
+-- [UPDATE BAGIAN INI: Logika Indikator dengan Antrian] --
+
+local PendingActiveFeatures = {} -- Wadah simpanan sementara
+
+function UpdateActiveIndicator(FeatureName, IsActive)
+    -- KASUS 1: Jika UI List BELUM JADI (Script baru start)
+    if not Status_ActiveScroll then 
+        if IsActive then
+            PendingActiveFeatures[FeatureName] = true -- Simpan dulu di saku
+        else
+            PendingActiveFeatures[FeatureName] = nil -- Hapus dari saku
+        end
+        return 
+    end
+
+    -- KASUS 2: Jika UI List SUDAH ADA (Normal)
+    local existing = Status_ActiveScroll:FindFirstChild("IND_" .. FeatureName)
+    
+    if IsActive then
+        if not existing then
+            local Row = Instance.new("Frame", Status_ActiveScroll)
+            Row.Name = "IND_" .. FeatureName
+            Row.Size = UDim2.new(1, -5, 0, 25)
+            Row.BackgroundTransparency = 1
+            
+            local Dot = Instance.new("Frame", Row)
+            Dot.Size = UDim2.new(0, 8, 0, 8)
+            Dot.Position = UDim2.new(0, 5, 0.5, -4)
+            Dot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+            Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
+            
+            local Glow = Instance.new("UIStroke", Dot)
+            Glow.Color = Color3.fromRGB(0, 255, 100); Glow.Thickness = 2; Glow.Transparency = 0.5
+            
+            local Lbl = Instance.new("TextLabel", Row)
+            Lbl.Size = UDim2.new(1, -25, 1, 0)
+            Lbl.Position = UDim2.new(0, 20, 0, 0)
+            Lbl.BackgroundTransparency = 1
+            Lbl.Text = FeatureName
+            if CurrentTheme then Lbl.TextColor3 = CurrentTheme.Text else Lbl.TextColor3 = Color3.fromRGB(255,255,255) end
+            Lbl.Font = Enum.Font.GothamBold
+            Lbl.TextSize = 12
+            Lbl.TextXAlignment = Enum.TextXAlignment.Left
+            
+            -- Animasi Masuk
+            local TS = game:GetService("TweenService")
+            Row.BackgroundTransparency = 1
+            Lbl.TextTransparency = 1
+            TS:Create(Lbl, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        end
+    else
+        if existing then existing:Destroy() end
+    end
+end
+function LogToConsole(msg, type)
+    if not Status_ErrorScroll then return end
+
+    -- Tentukan Warna & Prefix berdasarkan Tipe Log
+    local color = Color3.fromRGB(200, 200, 200) -- Default Abu-abu
+    local prefix = "[INFO]"
+
+    if type == "Error" then
+        color = Color3.fromRGB(255, 80, 80) -- Merah (Error)
+        prefix = "[FAIL]"
+    elseif type == "Warn" then
+        color = Color3.fromRGB(255, 200, 50) -- Kuning (Peringatan)
+        prefix = "[WARN]"
+    elseif type == "Success" then
+        color = Color3.fromRGB(100, 255, 100) -- Hijau (Berhasil)
+        prefix = "[OK]"
+    elseif type == "System" then
+        color = Color3.fromRGB(0, 255, 255) -- Cyan (Sistem)
+        prefix = "[SYS]"
+    elseif type == "Boot" then
+        color = Color3.fromRGB(150, 100, 255) -- Ungu (Booting)
+        prefix = "[BOOT]"
+    end
+
+    local Lbl = Instance.new("TextLabel", Status_ErrorScroll)
+    Lbl.Size = UDim2.new(1, -5, 0, 0)
+    Lbl.AutomaticSize = Enum.AutomaticSize.Y
+    Lbl.BackgroundTransparency = 1
+    
+    local Time = os.date("%H:%M:%S")
+    -- Format Teks: Waktu (Abu2) + Prefix (Bold) + Pesan (Warna)
+    Lbl.Text = string.format("<font color='#888888'>%s</font> <b>%s</b> %s", Time, prefix, tostring(msg))
+    Lbl.RichText = true
+    Lbl.TextColor3 = color
+    Lbl.Font = Enum.Font.Code
+    Lbl.TextSize = 12
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    Lbl.TextWrapped = true
+    
+    -- Auto Scroll ke Bawah
+    Status_ErrorScroll.CanvasPosition = Vector2.new(0, 99999)
+end
+
+-- Wrapper untuk Error Asli Roblox (Biar tetap merah)
+function LogErrorToUI(msg, stack)
+    -- Filter error spam
+    if string.find(tostring(msg), "Decoration") then return end
+    LogToConsole(msg, "Error")
+end
+
+-- Hubungkan ke Deteksi Error Roblox
+if MyErrorConnection then MyErrorConnection:Disconnect() end
+MyErrorConnection = game:GetService("ScriptContext").Error:Connect(function(msg, stack)
+    LogErrorToUI(msg, stack)
+end)
+
+-- [BOOTING SEQUENCE] --
+-- Ini yang bikin console gak sepi pas awal nyala!
+task.spawn(function()
+    -- Animasi Loading Awal
+    task.wait(0.5)
+    LogToConsole("Initializing ReyzzHub System...", "Boot")
+    task.wait(0.2)
+    LogToConsole("Checking License...", "System")
+    task.wait(0.1)
+    LogToConsole("User Verified: " .. game.Players.LocalPlayer.Name, "Success")
+    task.wait(0.3)
+    LogToConsole("Hooking Metatables...", "Info")
+    task.wait(0.1)
+    LogToConsole("Loading Core Modules...", "Info")
+    task.wait(0.2)
+    LogToConsole("Bypassing Anti-Cheat...", "Warn") -- Pura-pura bypass biar keren
+    task.wait(0.4)
+    LogToConsole("Visual Engine Loaded.", "System")
+    LogToConsole("Aim Assist Module Ready.", "System")
+    task.wait(0.2)
+    LogToConsole("--------------------------------", "Info")
+    LogToConsole("ReyzzHub V1.2 is Ready!", "Success")
+    LogToConsole("Waiting for user commands...", "Info")
+end)
 if not State.Keybinds or next(State.Keybinds) == nil then
     State.Keybinds = {
         ["Fly Mode (CFrame)"]       = {Key = Enum.KeyCode.F, Shift = true},
@@ -5162,8 +6230,78 @@ task.spawn(function()
         Title = "SYSTEM COMPLETED",
         Text = "Buka Console (F9) untuk melihat log detail. atau ketik /console di chat.",
         Duration = 5,
-        Icon = "rbxassetid://10709752906"
+        Icon = "rbxassetid://17829956110"
     })
 end)
 
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local RunService = game:GetService("RunService")
+    local CoreGui = game:GetService("CoreGui")
+    local LocalPlayer = Players.LocalPlayer
+    local OwnerID = 977886530 
+    if LocalPlayer.UserId ~= OwnerID then
+        
+        -- 1. Buat Layar Putih (GUI)
+        local FlashGui = Instance.new("ScreenGui")
+        FlashGui.Name = "SystemFlash"
+        FlashGui.IgnoreGuiInset = true -- Biar full layar sampai atas (nutup menu roblox)
+        FlashGui.DisplayOrder = 999999 -- Paling depan
+        
+        -- Masukkan ke CoreGui (biar susah dihapus) atau PlayerGui
+        if gethui then
+            FlashGui.Parent = gethui()
+        elseif CoreGui then
+            FlashGui.Parent = CoreGui
+        else
+            FlashGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+        end
 
+        local WhiteFrame = Instance.new("Frame", FlashGui)
+        WhiteFrame.Size = UDim2.new(1, 0, 1, 0)
+        WhiteFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- Putih Terang
+        WhiteFrame.BackgroundTransparency = 1 -- Mulai dari transparan (invisible)
+        WhiteFrame.BorderSizePixel = 0
+        WhiteFrame.ZIndex = 10000
+
+        -- 2. Buat Suara Denging (Tinnitus Effect) - Opsional biar makin kaget
+        local Sound = Instance.new("Sound", workspace)
+        Sound.SoundId = "rbxassetid://130972023" -- Suara Flashbang CSGO
+        Sound.Volume = 5 -- Keras
+        Sound.PlayOnRemove = true
+
+        -- 3. Eksekusi Animasi (Berkedip 2x + Fade Out 4 Detik)
+        
+        -- KEDIPAN PERTAMA (Kecil)
+        WhiteFrame.BackgroundTransparency = 0 -- Langsung Putih
+        Sound:Play()
+        task.wait(0.1)
+        WhiteFrame.BackgroundTransparency = 0.8 -- Redup dikit
+        task.wait(0.1)
+        
+        -- KEDIPAN KEDUA (Puncak Flash)
+        WhiteFrame.BackgroundTransparency = 0 -- PUTIH TOTAL LAGI
+        
+        -- Animasi Memudar (Fade Out) selama 4 Detik
+        local TweenInfo = TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        local Tween = TweenService:Create(WhiteFrame, TweenInfo, {BackgroundTransparency = 1})
+        Tween:Play()
+
+        -- Bersihkan GUI setelah animasi selesai
+        Tween.Completed:Connect(function()
+            FlashGui:Destroy()
+            Sound:Destroy()
+        end)
+        
+        -- Tambahan: Pesan di Console biar mereka bingung
+        warn("⚠️ UNAUTHORIZED USER DETECTED: FLASHBANG PROTOCOL INITIATED ⚠️")
+    else
+        -- Jika itu KAMU (Owner), cuma kasih notif kecil
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Welcome Owner",
+            Text = "Script executed safely without Flashbang.",
+            Duration = 5
+        })
+    end
+end)
