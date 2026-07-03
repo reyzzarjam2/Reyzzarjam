@@ -5,7 +5,7 @@ local function SafeExecute(url)
     end)
     
     if not success then
-        warn("Gagal mengeksekusi script: " .. tostring(result))
+        warn("Error Running Script: " .. tostring(result))
     end
 end
 
@@ -30,7 +30,7 @@ ToastStroke.Thickness = 1
 local Title = Instance.new("TextLabel", ToastFrame)
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.Position = UDim2.new(0, 20, 0, 15)
-Title.Text = "Execute second script?"
+Title.Text = "Execute Lynxx script or not?"
 Title.TextColor3 = Color3.fromRGB(237, 237, 237)
 Title.Font = Enum.Font.GothamMedium
 Title.TextSize = 14
