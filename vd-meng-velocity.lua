@@ -8,7 +8,7 @@ local function SafeExecute(url)
         warn("Error Running Script: " .. tostring(result))
     end
 end
-
+settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 SafeExecute("https://raw.githubusercontent.com/reyzzarjam2/Reyzzarjam/refs/heads/main/vd-meng.lua")
 task.wait(1)
 
